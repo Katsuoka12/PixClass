@@ -1,4 +1,4 @@
-# Student Tag Web — M2
+# Student Tag Web — M3
 
 Nuxt stable 4.6.4 + Vue 3 Composition API + strict TypeScript ใช้ Node 24 LTS >=24.15.0 ติดตั้งแยกจาก backend:
 
@@ -17,7 +17,11 @@ production ต้องมี reverse proxy `/api/*` ไป Express และต
 
 หน้า `/login`, `/register`, `/` (redirect ตาม role), `/admin`, `/teacher`, `/student` มี route guard สำหรับ UX ทุก role landing เรียก protected overview endpoint ของ API อีกชั้นหนึ่ง ครู/นักเรียนมีรายการห้องและฟอร์มสร้าง/เข้าร่วม ห้องอยู่ที่ `/classes/:id/stream`, `/classwork`, `/people`, `/grades` (ครูเท่านั้น) เปิด `/classes/:id` จะไปสตรีม การทำ business logic และบังคับสิทธิ์อยู่ backend
 
-`types/api.ts` เขียนตาม [../docs/api.md](../docs/api.md) ไม่มี import type/code จาก backend ไม่มี dependency แชร์กัน ไม่มี `v-html`, analytics, remote fonts หรือ external asset requests ข้อความประกาศแสดงแบบ plain text และรักษาบรรทัดใหม่ เวลาแสดงโซน Asia/Bangkok รหัสห้องแสดงเฉพาะครูเจ้าของห้องที่ยังเปิดอยู่ แท็บงานและคะแนนรอ M3 อย่างชัดเจน
+`types/api.ts` เขียนตาม [../docs/api.md](../docs/api.md) ไม่มี import type/code จาก backend ไม่มี dependency แชร์กัน ไม่มี `v-html`, analytics, remote fonts หรือ external asset requests ข้อความประกาศ/คำตอบ/คอมเมนต์แสดงแบบ plain text รักษาบรรทัดใหม่ เวลาแสดงโซน Asia/Bangkok รหัสห้องแสดงเฉพาะครูเจ้าของห้องที่ยังเปิดอยู่
+
+M3: แท็บงานมีฟอร์มสร้างงานและรายการจริง `/assignments/:id` แสดงรายละเอียด/แก้ไข/ลบสำหรับครู นักเรียนส่งและแก้ข้อความ/ไฟล์ก่อนตรวจ ครูเห็นรายการส่งและให้คะแนน `/classes/:id/grades` มี Gradebook นักเรียน×งาน และ `/todo` เป็นงานของฉันสำหรับ student เท่านั้น API ตรวจสิทธิ์จริงทุกครั้ง
+
+กำหนดส่งในฟอร์ม datetime-local ใช้ timezone ของอุปกรณ์ครูและส่ง ISO UTC ไป API คำตอบส่งเป็น JSON หรือ FormData โดยไม่ตั้ง multipart Content-Type เอง ไฟล์เดิมเก็บไว้จนเลือกแทน/ลบ จำกัดชนิด/ขนาดฝั่ง UI เพื่อช่วยผู้ใช้ และ backend ตรวจจริงซ้ำ Browser timeout สำหรับไฟล์ 120 วินาที คะแนน 0 แสดงได้และปิดการแก้คำตอบเช่นเดียวกับคะแนนอื่น แก้กำหนดส่งแล้วรายการส่งช้า refresh ตาม API
 
 สีตามพาเลตผู้ใช้: พื้น `#F3F6F4`, รอง `#7D8D39`, ปุ่มหลัก `#5B6E2C`, เน้น `#FF5A22` ใช้ label, focus ring, loading/disabled/error states และ layout มือถือ/desktop ฟอนต์หลัก **Anuphan (อนุพันธ์)** แบบ variable น้ำหนัก 100–700 เก็บที่ `public/fonts/anuphan-variable.ttf` ใช้ `@font-face` + `font-display: swap` และ preload ใน Nuxt ไม่เรียก font CDN และมี system font สำรอง
 

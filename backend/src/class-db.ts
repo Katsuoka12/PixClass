@@ -52,11 +52,23 @@ export function createClassStore(pool: Pool): ClassStore {
       return result.affectedRows > 0;
     },
     async removeMember(classId, teacherId, userId) {
-      const [result] = await pool.execute<ResultSetHeader>(
-        `DELETE m FROM class_members m JOIN classes c ON c.id = m.class_id
-         WHERE m.class_id = ? AND m.user_id = ? AND c.teacher_id = ? AND c.archived = 0`, [classId, userId, teacherId],
-      );
-      return result.affectedRows > 0;
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+        // Match assignment writes: lock the classroom before membership rows.
+        const [classes] = await connection.execute<RowDataPacket[]>(
+          'SELECT id FROM classes WHERE id = ? AND teacher_id = ? AND archived = 0 FOR UPDATE', [classId, teacherId],
+        );
+        if (!classes.length) { await connection.commit(); return false; }
+        const [result] = await connection.execute<ResultSetHeader>(
+          'DELETE FROM class_members WHERE class_id = ? AND user_id = ?', [classId, userId],
+        );
+        await connection.commit();
+        return result.affectedRows > 0;
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally { connection.release(); }
     },
     async members(classId) {
       const [rows] = await pool.execute<(RowDataPacket & { id: number; name: string; joined_at: Date })[]>(
