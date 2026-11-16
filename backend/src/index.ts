@@ -1,6 +1,7 @@
 import { loadConfig } from './config.js';
 import { createPool, createUserStore } from './db.js';
 import { createApp } from './app.js';
+import { createClassStore } from './class-db.js';
 
 async function main() {
   const config = loadConfig();
@@ -11,7 +12,7 @@ async function main() {
     await pool.end();
     throw new Error('Cannot connect to MariaDB. Check DB settings and import schema.sql first.');
   }
-  const server = createApp(config, createUserStore(pool)).listen(config.API_PORT, '127.0.0.1', () => {
+  const server = createApp(config, createUserStore(pool), createClassStore(pool)).listen(config.API_PORT, '127.0.0.1', () => {
     console.info(`Student Tag API listening on port ${config.API_PORT}`);
   });
   const shutdown = () => {

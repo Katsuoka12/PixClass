@@ -12,7 +12,7 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:db": "vitest run tests/database.integration.test.ts"
+    "test:db": "vitest run tests/database.integration.test.ts tests/classes.integration.test.ts"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

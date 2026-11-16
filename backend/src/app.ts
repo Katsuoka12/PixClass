@@ -7,8 +7,10 @@ import type { AppConfig, UserStore } from './types.js';
 import { authenticate, requireRole, publicUser } from './middleware/auth.js';
 import { ApiError, errorHandler } from './middleware/errors.js';
 import { authRouter } from './routes/auth.js';
+import type { ClassStore } from './classrooms.js';
+import { classesRouter } from './routes/classes.js';
 
-export function createApp(config: AppConfig, users: UserStore) {
+export function createApp(config: AppConfig, users: UserStore, classes?: ClassStore) {
   const app = express();
   app.disable('x-powered-by');
   // Only the local Nuxt/reverse proxy may supply client forwarding headers.
@@ -26,11 +28,12 @@ export function createApp(config: AppConfig, users: UserStore) {
   app.use(express.json({ limit: '16kb' }));
   app.use(cookieParser());
   app.use('/api/auth', authRouter(config, users));
-  // M1 role landing data; feature endpoints are added in later milestones.
+  if (classes) app.use('/api/classes', classesRouter(config, users, classes));
+  // Role-specific landing data, separate from classroom authorization.
   for (const role of ['admin', 'teacher', 'student'] as const) {
     app.get(`/api/${role}/overview`, authenticate(config, users), requireRole(role), (req, res) => {
       z.strictObject({}).parse(req.query);
-      res.json({ data: { user: publicUser(res.locals.user), milestone: 'M1' } });
+      res.json({ data: { user: publicUser(res.locals.user), milestone: 'M2' } });
     });
   }
   app.use((_req, _res, next) => next(new ApiError(404, 'NOT_FOUND', 'ไม่พบข้อมูลที่ต้องการ')));

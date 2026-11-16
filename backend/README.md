@@ -1,4 +1,4 @@
-# Student Tag API — M1
+# Student Tag API — M2
 
 Express 5 + strict TypeScript + zod 4 + mysql2/promise SQL ตรง ใช้ Node 24 LTS >=24.15.0 ติดตั้งและรันจากโฟลเดอร์นี้:
 
@@ -33,8 +33,10 @@ $env:NODE_ENV='test'
 npm test
 ```
 
-Tests login seed ทั้ง 3 role, ตรวจการปฏิเสธ role อื่น, สมัคร/ตรวจรหัสผ่านที่เก็บจริง, email ซ้ำ, ระงับ session, UTF-8 และ foreign key ลบเฉพาะบัญชี test UUID ที่สร้างเองหลังทดสอบ ไม่มี drop/schema reset อัตโนมัติ ต้องไม่เปิดแอปที่เขียนข้อมูลร่วม DB นี้ระหว่างทดสอบ ปิด terminal test หลังใช้เพื่อไม่ให้ environment override `.env`
+Tests login seed ทั้ง 3 role, ตรวจการปฏิเสธ role อื่น, สมัคร/ตรวจรหัสผ่านที่เก็บจริง, email ซ้ำ, ระงับ session, UTF-8 และ foreign key รวมถึง M2 สร้างห้อง/join พร้อมกัน/ประกาศ/เจ้าของห้อง/นำสมาชิกออก/เก็บห้อง SQL tests ลบเฉพาะห้อง ประกาศ สมาชิก และบัญชี test ที่สร้างเอง ไม่มี drop/schema reset อัตโนมัติ ไม่แก้ไขห้อง seed ต้องไม่เปิดแอปที่เขียนข้อมูลร่วม DB นี้ระหว่างทดสอบ ปิด terminal test หลังใช้เพื่อไม่ให้ environment override `.env`
 
 Unit/HTTP suite ใช้ store จำลองใน tests เท่านั้น ไม่มี fallback แบบ in-memory ในแอปจริง uploads/ ไม่ถูก static serve โดยจะทำ endpoint ดาวน์โหลดที่ตรวจสิทธิ์ใน M3
 
-ไม่มี Telegram bot/cron/upload handlers ใน M1 ค่าที่เตรียมไว้ใน `.env.example` ยังไม่เริ่มใช้ เช็กรายละเอียด production และ proxy ใน README ราก
+M2 เพิ่ม `class-db.ts` (prepared SQL), `classrooms.ts` (repository types), `routes/classes.ts` (validation/authorization) และ HTTP/DB tests ไม่ต้องเปลี่ยน schema ทุก mutation ตรวจ archived ใน SQL อีกชั้นเพื่อป้องกันการแก้ห้องหลังถูกเก็บ Timestamp ใหม่ใช้ UTC_TIMESTAMP() แล้วตอบ ISO UTC
+
+ไม่มี Telegram bot/cron/upload handlers ใน M2 ค่าที่เตรียมไว้ใน `.env.example` ยังไม่เริ่มใช้ เช็กรายละเอียด production และ proxy ใน README ราก
