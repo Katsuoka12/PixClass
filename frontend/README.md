@@ -1,0 +1,24 @@
+# Student Tag Web — M1
+
+Nuxt stable 4.6.4 + Vue 3 Composition API + strict TypeScript ใช้ Node 24 LTS >=24.15.0 ติดตั้งแยกจาก backend:
+
+```sh
+npm install
+cp .env.example .env
+npm run dev
+npm run typecheck
+npm run build
+npm run preview
+```
+
+dev ที่ http://localhost:3000 เรียก `/api/*` ผ่าน `nitro.devProxy` ไป `API_PROXY_TARGET=http://localhost:4000` อย่าใส่ `/api` ต่อท้าย API_PROXY_TARGET ส่วน SSR เรียก Express โดยตรงและ forward เฉพาะ incoming cookie การเรียกภายใน Nitro ไม่ผ่าน devProxy
+
+production ต้องมี reverse proxy `/api/*` ไป Express และตั้ง private `NUXT_API_SERVER_BASE=http://127.0.0.1:4000/api` หาก API เปลี่ยนที่อยู่ ค่า `NUXT_PUBLIC_API_BASE=/api` อยู่ฝั่งเบราว์เซอร์ เก็บ WEB_URL ของ backend ให้ตรง public origin ที่เข้าเว็บ
+
+หน้า `/login`, `/register`, `/` (redirect ตาม role), `/admin`, `/teacher`, `/student` มี route guard สำหรับ UX ทุก role landing เรียก protected overview endpoint ของ API อีกชั้นหนึ่ง การทำ business logic และบังคับสิทธิ์อยู่ backend
+
+`types/api.ts` เขียนตาม [../docs/api.md](../docs/api.md) ไม่มี import type/code จาก backend ไม่มี dependency แชร์กัน ไม่มี `v-html`, analytics, remote fonts หรือ external asset requests หน้าแรกแสดงส่วนเตรียมพร้อมของ M2–M6 อย่างชัดเจน
+
+สีตามพาเลตผู้ใช้: พื้น `#F3F6F4`, รอง `#7D8D39`, ปุ่มหลัก `#5B6E2C`, เน้น `#FF5A22` ใช้ label, focus ring, loading/disabled/error states และ layout มือถือ/desktop ฟอนต์ภาษาไทยเลือกจากที่ติดตั้งในเครื่อง
+
+บัญชีและรหัส seed ดู README ราก ข้อจำกัด dependency audit ดู docs/m1-verification.md
