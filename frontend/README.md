@@ -19,6 +19,8 @@ production ต้องมี reverse proxy `/api/*` ไป Express และต
 
 `types/api.ts` เขียนตาม [../docs/api.md](../docs/api.md) ไม่มี import type/code จาก backend ไม่มี dependency แชร์กัน ไม่มี `v-html`, analytics, remote fonts หรือ external asset requests ข้อความประกาศแสดงแบบ plain text และรักษาบรรทัดใหม่ เวลาแสดงโซน Asia/Bangkok รหัสห้องแสดงเฉพาะครูเจ้าของห้องที่ยังเปิดอยู่ แท็บงานและคะแนนรอ M3 อย่างชัดเจน
 
-สีตามพาเลตผู้ใช้: พื้น `#F3F6F4`, รอง `#7D8D39`, ปุ่มหลัก `#5B6E2C`, เน้น `#FF5A22` ใช้ label, focus ring, loading/disabled/error states และ layout มือถือ/desktop ฟอนต์ภาษาไทยเลือกจากที่ติดตั้งในเครื่อง
+สีตามพาเลตผู้ใช้: พื้น `#F3F6F4`, รอง `#7D8D39`, ปุ่มหลัก `#5B6E2C`, เน้น `#FF5A22` ใช้ label, focus ring, loading/disabled/error states และ layout มือถือ/desktop ฟอนต์หลัก **Anuphan (อนุพันธ์)** แบบ variable น้ำหนัก 100–700 เก็บที่ `public/fonts/anuphan-variable.ttf` ใช้ `@font-face` + `font-display: swap` และ preload ใน Nuxt ไม่เรียก font CDN และมี system font สำรอง
+
+ไฟล์ฟอนต์ต้นฉบับจาก [Google Fonts / Anuphan](https://github.com/google/fonts/tree/main/ofl/anuphan) โดย The Anuphan Project Authors (Cadson Demak) แจกจ่ายตาม SIL Open Font License 1.1 แนบที่ `public/fonts/Anuphan-OFL.txt` โดยไม่แก้ไขไฟล์ฟอนต์ ไม่เพิ่ม npm dependency
 
 บัญชีและรหัส seed ดู README ราก ข้อจำกัด dependency audit ดู docs/m1-verification.md

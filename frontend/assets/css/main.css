@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'Anuphan';
+  src: url('/fonts/anuphan-variable.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: swap;
+}
+
 :root {
   --paper: #f3f6f4;
   --olive: #7d8d39;
@@ -8,7 +16,7 @@
   --line: #dce2d5;
   --white: #fff;
   --error: #9e321c;
-  font-family: 'Leelawadee UI', 'Noto Sans Thai', Tahoma, sans-serif;
+  font-family: 'Anuphan', 'Leelawadee UI', Tahoma, sans-serif;
   color: var(--ink);
   background: var(--paper);
   font-synthesis: none;
@@ -25,19 +33,19 @@ a:hover { text-decoration-thickness: 2px; }
 :focus-visible { outline: 3px solid var(--orange); outline-offset: 4px; }
 h1, h2, h3, p { margin: 0; }
 h1, h2, h3 { line-height: 1.4; }
-.brand { display: inline-flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 750; letter-spacing: -.8px; line-height: 1.3; }
+.brand { display: inline-flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 700; letter-spacing: -.5px; line-height: 1.3; }
 .brand-symbol { display: inline-flex; align-items: center; justify-content: center; background: var(--green); color: var(--paper); font-size: 27px; width: 48px; height: 48px; border-radius: 13px 13px 13px 2px; letter-spacing: -2px; }
 .brand-symbol > span { color: var(--orange); }
 .brand-caption { display: block; font-size: 11px; letter-spacing: 0; font-weight: 400; margin-top: 4px; }
 .brand-link { text-decoration: none; color: var(--ink); }
-.eyebrow { display: block; font-size: 12px; font-weight: 600; letter-spacing: .9px; }
+.eyebrow { display: block; font-size: 12px; font-weight: 500; letter-spacing: .3px; }
 .muted { color: var(--muted); font-size: 15px; }
 .orange-text { color: var(--orange); }
 .auth-shell { min-height: 100svh; display: grid; grid-template-columns: 1fr 1fr; }
 .auth-story { padding: 42px 9%; display: flex; flex-direction: column; background: var(--paper); border-right: 1px solid var(--line); }
 .story-body { margin: auto 0; padding: 64px 0 42px; max-width: 460px; }
 .story-body .eyebrow { color: var(--green); margin-bottom: 18px; }
-.story-body h1 { font-size: clamp(38px, 3.7vw, 58px); font-weight: 650; letter-spacing: -1.8px; line-height: 1.45; }
+.story-body h1 { font-size: clamp(38px, 3.7vw, 58px); font-weight: 600; letter-spacing: normal; line-height: 1.45; }
 .story-body > p { margin-top: 22px; color: var(--muted); font-size: 16px; line-height: 1.9; }
 .notebook { position: relative; margin-top: 46px; padding: 24px 28px 35px; background: var(--white); border: 1px solid var(--line); border-radius: 4px; transform: rotate(-3deg); box-shadow: 6px 7px 0 #e5eadd; max-width: 360px; }
 .notebook-heading { display: flex; align-items: center; justify-content: space-between; padding-bottom: 17px; border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 600; }

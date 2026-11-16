@@ -18,6 +18,7 @@ export default defineNuxtConfig({
     head: {
       htmlAttrs: { lang: 'th' },
       title: 'Student Tag · ห้องเรียนของเรา',
+      link: [{ rel: 'preload', href: '/fonts/anuphan-variable.ttf', as: 'font', type: 'font/ttf', crossorigin: 'anonymous' }],
       meta: [{ name: 'description', content: 'พื้นที่เรียนรู้สำหรับครูและนักเรียน' }],
     },
   },
