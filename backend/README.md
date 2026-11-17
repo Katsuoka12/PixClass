@@ -1,4 +1,4 @@
-# Student Tag API — M4
+# Student Tag API — M5
 
 Express 5 + strict TypeScript + zod 4 + mysql2/promise SQL ตรง ใช้ Node 24 LTS >=24.15.0 ติดตั้งและรันจากโฟลเดอร์นี้:
 
@@ -53,4 +53,10 @@ Webhook POST `/api/telegram/webhook` ตรวจ secret ด้วย timingSafe
 
 แจ้งงาน/ประกาศ/คะแนนหลัง DB commit ไม่ทำให้ข้อมูลหลักย้อนกลับเมื่อส่งไม่ได้ มีคิวใน process เดียว หน่วง 50ms ทุกข้อความ/1s ต่อ chat และเคารพ retry_after จาก 429 แต่ไม่ retry ข้อความล้มเหลวอัตโนมัติ ตรวจ active/member/mute/คนยังไม่ส่งอีกครั้งหลังรอคิว บันทึก notification_log sent/failed/skipped ด้วย fixed error codes และไม่มี raw Telegram errors ซึ่งอาจมี credential ไม่มี persistent outbox: process crash อาจทำข้อความหายและกรณีส่งสำเร็จแต่ DB log ล้มอาจไม่มี log ผู้ดูแลควรตรวจ log/error และพื้นที่ DB ก่อนใช้งานจริง หลาย API instance ต้องเพิ่ม shared rate limiter ก่อนขยายระบบ
 
-M4 ยังไม่ได้ตรวจ real Telegram delivery เนื่องจากไม่มี credentials ใน environment นี้ ยังไม่มี cron/Jitsi เช็กรายละเอียด production และ proxy ใน README ราก
+M4 ยังไม่ได้ตรวจ real Telegram delivery เนื่องจากไม่มี credentials ใน environment นี้ ยังไม่มี cron เช็กรายละเอียด production และ proxy ใน README ราก
+
+M5 เพิ่ม `live.ts`, `live-db.ts`, `routes/live.ts`, `services/live-notify.ts` ใช้ schema เดิมและ JITSI_DOMAIN ไม่ส่ง room_name จนกว่า token/current-account/current-class ผ่านการตรวจ ทุก write lock class ก่อน session/token/attendance มี SQL tests สำหรับ concurrent start/join/end และ expiry/removal หลังรอล็อก GET join ต้อง X-Live-Join:1 เพื่อกัน navigation/prefetch บันทึกเช็คชื่อโดยไม่ตั้งใจ; POST leave/beacon ยังตรวจ cookie+Origin
+
+Live token random32bytes อายุ2h ใช้ซ้ำเฉพาะบัญชี/คาบเดิมจนหมดอายุ จบคาบแล้วปฏิเสธทั้งหมด ไม่ log token/query/ปุ่มคำเชิญใน notification_log โหลด room เฉพาะ API join ที่ผ่านสิทธิ์ เช็คชื่อเก็บ earliest joined_at/last left_at ต่อuser/session End ปิดแถวที่ยังไม่ออก ครูเช็คชื่อ/เตือนเฉพาะห้องตนเอง คิว Telegram M4 ตรวจ live eligibility อีกครั้งหลังรอ ส่งล้มเหลวไม่ทำให้เริ่มคาบย้อนกลับ
+
+`npm run test:db` รวม M5 live SQL และ HTTP-flow suites ตรวจ DB จริง + simulated Telegram โดยไม่เรียกบริการภายนอก วิธีทดสอบ Jitsi จริงและข้อจำกัด public URL/attendance/15-minute auth อยู่ README ราก

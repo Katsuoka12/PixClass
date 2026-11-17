@@ -4,9 +4,9 @@
 
 ## สถานะ
 
-พัฒนาถึง **M4: เชื่อม Telegram** — รวม Auth, ห้องเรียน/ประกาศ, งาน/ส่งงาน/คะแนน, Gradebook, งานของฉัน, โปรไฟล์ผูก Telegram, แจ้งงาน/ประกาศ/คะแนนและเตือนคนค้างส่ง รองรับ polling และ webhook การส่งผ่าน Telegram จริงยังรอ Bot credentials ของผู้ใช้
+พัฒนาถึง **M5: Live Class + เช็คชื่อ** — รวม Auth, ห้องเรียน/ประกาศ, งาน/ส่งงาน/คะแนน, Telegram, เปิด/จบคาบ Jitsi และตารางเช็คชื่อ การส่งผ่าน Telegram จริงและวิดีโอคอลจริงยังต้องตรวจด้วย credentials/อุปกรณ์ของผู้ใช้
 
-หน้าห้องมีสตรีม / งานในชั้นเรียน / บุคคล / คะแนน (ครู) นักเรียนเปิด “งานของฉัน” จากแถบบนได้ ทุก role เปิดโปรไฟล์ได้ ยังไม่เริ่ม M5–M6: Jitsi, cron และจัดการผู้ใช้แบบ Admin
+หน้าห้องมีสตรีม / งานในชั้นเรียน / บุคคล / คะแนน (ครู) และ Live Class ในสตรีม นักเรียนเปิด “งานของฉัน” จากแถบบนได้ ทุก role เปิดโปรไฟล์ได้ ยังไม่เริ่ม M6: cron และจัดการผู้ใช้แบบ Admin
 
 สีตาม [พาเลตที่เลือก](https://colorhunt.co/palette/f3f6f47d8d395b6e2cff5a22): `#F3F6F4`, `#7D8D39`, `#5B6E2C`, `#FF5A22` ใช้ฟอนต์ **Anuphan (อนุพันธ์)** แบบ variable ที่เก็บในเว็บเอง รองรับไทย/อังกฤษ ไม่มีการส่งข้อมูลนักเรียนไปโหลดฟอนต์หรือ analytics ภายนอก
 
@@ -96,7 +96,22 @@ cd backend && npm run build
 cd ../frontend && npm run build
 ```
 
-ยังไม่มี lint script ใช้ strict typecheck, tests และ build เป็น checks ผลตรวจจริงอยู่ใน [M1 verification](docs/m1-verification.md), [M2 verification](docs/m2-verification.md), [M3 verification](docs/m3-verification.md) และ [M4 verification](docs/m4-verification.md)
+ยังไม่มี lint script ใช้ strict typecheck, tests และ build เป็น checks ผลตรวจจริงอยู่ใน [M1 verification](docs/m1-verification.md), [M2 verification](docs/m2-verification.md), [M3 verification](docs/m3-verification.md), [M4 verification](docs/m4-verification.md) และ [M5 verification](docs/m5-verification.md) Frontend เพิ่ม `npm test` ตรวจ safe live redirect และ Jitsi fallback URL
+
+## เรียนสดและเช็คชื่อ (M5)
+
+1. ตั้ง `JITSI_DOMAIN=meet.jit.si` หรือ hostname ของ Jitsi ที่ดูแลเอง (ไม่ใส่ https:// หรือ path) แล้ว restart API ใช้ HTTPS เมื่อ deploy จริง ไม่ต้อง migrate schema จาก M1–M4
+2. ครูเปิดห้อง → **สตรีม** → **ห้องเรียนสด** ใส่ชื่อคาบแล้วกด **เริ่ม Live Class** ห้องหนึ่งเปิดพร้อมกันได้หนึ่งคาบ ระบบสร้างชื่อ Jitsi สุ่มและส่ง Telegram พร้อมปุ่มเข้าเรียนรายคนถ้าตั้งค่าบอทไว้
+3. นักเรียนกดปุ่มจาก Telegram หรือ **เข้าเรียน** ในสตรีมได้แม้ไม่เชื่อม Telegram ต้อง login บัญชีเจ้าของลิงก์ก่อน จากนั้นกด **เข้าเรียนและบันทึกเช็คชื่อ** ระบบจะบันทึกเวลาเปิดหน้าเรียนแล้วโหลด Jitsi ชื่อแสดงเป็นชื่อบัญชี กล้องและไมค์เริ่มปิด นักเรียนเลือกเปิดเอง
+4. ครูกด **ดูเช็คชื่อ** เพื่อดูสมาชิกที่เข้า/ยังไม่เข้า เวลาเข้า/ออก และโหลดใหม่ กด **จบคาบ** แล้วระบบปิดลิงก์เข้าและบันทึกออกให้คนที่ยังเปิดอยู่ จากนั้นกด **แจ้งเตือนคนที่ขาด** ส่งเฉพาะคนไม่มีบันทึกเข้าเรียน ประวัติคาบเปิดดูได้ในสตรีม
+
+Jitsi สาธารณะ **อาจให้ครูล็อกอินเพื่อสร้างห้อง** หากฝังไม่ได้ให้ใช้ **เปิดห้องในแท็บใหม่** ครูควรเข้า/สร้างห้องก่อนนักเรียน ดู [ข้อกำหนดผู้สร้างห้อง](https://jitsi.org/blog/authentication-on-meet-jit-si/) และ [IFrame API](https://jitsi.github.io/handbook/docs/dev-guide/dev-guide-iframe/) ที่ตรวจเมื่อ17พ.ย.2569 ระบบไม่ล็อกอิน Jitsi แทนผู้ใช้และไม่สร้างวิดีโอคอลผ่าน Telegram
+
+ก่อนกดเข้าห้อง หน้าเว็บแจ้งว่าชื่อและสื่อที่เลือกเปิดจะส่งไปยัง Jitsi domain ที่กำหนด ควรใช้ Jitsi ที่ควบคุมเองสำหรับข้อมูลนักเรียนใน production ไม่ส่งอีเมล คะแนน หรือไฟล์คำตอบให้ Jitsi ลิงก์ token มีอายุ2ชั่วโมง ใช้ได้เฉพาะบัญชีและคาบนั้น ใช้ซ้ำเพื่อกลับเข้าได้ แต่จบคาบแล้วเข้าไม่ได้ URL token ถูกเอาออกจากหน้าเว็บก่อนโหลด Jitsi และตั้ง no-referrer ห้ามตั้ง proxy/access log ให้เก็บ query `/live/join` หรือ login redirect ที่มี token
+
+เช็คชื่อเป็น **การเปิดหน้า Live Class** ไม่ยืนยันระยะเวลาวิดีโอหรือบุคคล เก็บเวลาเข้าแรก/ออกล่าสุดต่อบัญชี การปิดแท็บ/เน็ตหลุดส่งเวลาออกแบบ best effort และหลายแท็บใช้แถวเช็คชื่อเดียวกัน หากเปิด Jitsi แท็บใหม่ Student Tag ไม่ทราบเวลาวางสาย ให้กลับมากดออกที่หน้าเรียน รายชื่อเช็คชื่ออ้างอิงสมาชิกปัจจุบัน การจบคาบในแอปไม่บังคับปิดห้อง Jitsi สาธารณะ และใครที่ได้ URL Jitsi โดยตรงอาจเข้าได้ตามสิทธิ์ของ Jitsi เอง
+
+Session login เดิมยังอายุ15นาที เมื่อหมดอายุให้ login แล้วเข้าจากห้องอีกครั้ง หน้า Live ตรวจสถานะทุก15วินาทีและปิด iframe เมื่อหมดสิทธิ์/คาบจบ ทดสอบกล้อง/ไมค์และการสร้างห้องด้วยบัญชี Jitsi จริงก่อนใช้งานสอนจริง รายงานนี้ยังไม่ยืนยัน video/audio หรือ real Telegram delivery
 
 ## ตั้งค่าและทดลอง Telegram (M4)
 
@@ -143,5 +158,5 @@ Production/webhook: ตั้ง `TELEGRAM_MODE=webhook`, `WEB_URL=https://<your
 - Production ต้อง HTTPS, `NODE_ENV=production`, `WEB_URL=https://...`, secret ใหม่, DB user สิทธิ์เท่าที่จำเป็นและรหัสผ่านจริง ห้ามใช้บัญชี seed และต้องตั้งรหัส MySQL root
 - Nuxt `devProxy` ใช้เฉพาะตอน dev; production ต้อง reverse proxy `/api/*` ไป Express เอง ตั้ง `NUXT_API_SERVER_BASE=http://127.0.0.1:4000/api` ให้ SSR ด้วยเมื่อเปลี่ยนที่อยู่ API และไม่ cache HTML ที่มี session
 - Rate limit เป็น memory ของ API process: login/register แยกกันอย่างละ 10 ครั้ง/15 นาทีต่อ IP รีสตาร์ตแล้วเริ่มใหม่ เหมาะกับ API instance เดียว
-- Jitsi จะทำใน M5 โดยตรวจเอกสารปัจจุบันก่อนตาม AGENTS.md การตั้งค่า Telegram และ tunnel สำหรับ M4 อยู่ในหัวข้อด้านบน
+- การตั้งค่า Telegram/tunnel และข้อจำกัด Jitsi/เช็คชื่ออยู่ในหัวข้อ M4/M5 ด้านบน
 - npm audit ของ frontend มี transitive advisories 10 รายการ (6 low / 4 moderate) ใน Nuxt/Nitro dependency chain ณ วันที่ทดสอบ ไม่มี high/critical แต่ยังต้องติดตาม upstream ก่อน deploy; ไม่ใช้ `audit fix --force` ซึ่งเสนอ downgrade Nuxt ขัดกับสเปก stable ล่าสุด

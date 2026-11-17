@@ -5,6 +5,8 @@ import { createClassStore } from './class-db.js';
 import { createAssignmentStore } from './assignment-db.js';
 import { createTelegramStore } from './telegram-db.js';
 import { createTelegramRuntime } from './bot/runtime.js';
+import { createLiveStore } from './live-db.js';
+import { createLiveNotifications } from './services/live-notify.js';
 
 async function main() {
   const config = loadConfig();
@@ -18,10 +20,13 @@ async function main() {
   const users = createUserStore(pool);
   const classes = createClassStore(pool);
   const assignments = createAssignmentStore(pool);
-  const telegram = createTelegramRuntime(config, createTelegramStore(pool), users, assignments, classes);
+  const telegramStore = createTelegramStore(pool);
+  const telegram = createTelegramRuntime(config, telegramStore, users, assignments, classes);
+  const liveStore = createLiveStore(pool);
+  const live = { store: liveStore, domain: config.JITSI_DOMAIN, notifications: createLiveNotifications(liveStore, telegramStore, users, telegram.notify, config.WEB_URL) };
   try { await telegram.start(); }
   catch (error) { await pool.end(); throw error; }
-  const server = createApp(config, users, classes, assignments, undefined, telegram.integration).listen(config.API_PORT, '127.0.0.1', () => {
+  const server = createApp(config, users, classes, assignments, undefined, telegram.integration, live).listen(config.API_PORT, '127.0.0.1', () => {
     console.info(`Student Tag API listening on port ${config.API_PORT}`);
   });
   const shutdown = () => {

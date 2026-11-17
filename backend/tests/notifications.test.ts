@@ -23,6 +23,11 @@ function fixture() {
   return { accounts, store, assignments, send, service };
 }
 describe('M4 notification delivery', () => {
+  it('rechecks live-session eligibility before queued delivery', async () => {
+    const f = fixture();
+    expect(await f.service.notify(3, 'live invitation', undefined, { kind: 'live_invite', refId: 10, eligible: async () => false })).toBe('skipped');
+    expect(f.send).not.toHaveBeenCalled();
+  });
   it('counts missing recipients, skips muted/unlinked and continues past a failed send', async () => {
     const { service, store, send } = fixture();
     expect(await service.remind(10, teacher)).toEqual({ total: 4, sent: 1, unlinked: 1, muted: 1, failed: 1, skipped: 0 });

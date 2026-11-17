@@ -12,9 +12,10 @@ export function createTelegramRuntime(config: Config, store: TelegramStore, user
   const configured = !!(config.TELEGRAM_BOT_TOKEN && config.TELEGRAM_BOT_USERNAME);
   const bot = configured ? suppliedBot ?? new Bot(config.TELEGRAM_BOT_TOKEN, { client: { timeoutSeconds: 10 } }) : null;
   const send = bot ? createTelegramSend(bot) : null;
+  const notifications = createNotifications(store, assignments, classes, send, config.WEB_URL);
   const integration: TelegramIntegration = {
     store, configured, username: config.TELEGRAM_BOT_USERNAME,
-    hooks: createNotifications(store, assignments, classes, send, config.WEB_URL),
+    hooks: notifications,
   };
   if (bot && send) {
     configureStudentBot(bot, store, users, assignments, classes, config.WEB_URL, send);
@@ -23,6 +24,7 @@ export function createTelegramRuntime(config: Config, store: TelegramStore, user
   }
   return {
     integration,
+    notify: notifications.notify,
     async start() {
       if (!bot) { console.info('Telegram disabled: configure bot credentials to enable it'); return; }
       try {

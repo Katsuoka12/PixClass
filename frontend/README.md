@@ -1,4 +1,4 @@
-# Student Tag Web — M4
+# Student Tag Web — M5
 
 Nuxt stable 4.6.4 + Vue 3 Composition API + strict TypeScript ใช้ Node 24 LTS >=24.15.0 ติดตั้งแยกจาก backend:
 
@@ -7,6 +7,7 @@ npm install
 cp .env.example .env
 npm run dev
 npm run typecheck
+npm test
 npm run build
 npm run preview
 ```
@@ -24,6 +25,10 @@ M3: แท็บงานมีฟอร์มสร้างงานและ�
 M4: `/profile` ใช้ได้ทุก role ที่ login แสดงสถานะ Telegram และสร้างลิงก์ใช้ครั้งเดียว ผู้ใช้กด anchor เปิด t.me เองหลัง API ตอบ (ไม่ใช้ popup ที่เบราว์เซอร์อาจบล็อก) ไม่บันทึก link token ใน localStorage หรือ log ตรวจสถานะหลังกลับจากบอท หาก backend ไม่ตั้ง credentials จะปิดปุ่มเชื่อม พร้อมคำแนะนำ การ mute/unmute ใช้คำสั่งในบอท
 
 หน้างานครูมีปุ่มเตือนคนที่ยังไม่ส่ง ปิดเมื่อไม่มีคนค้าง/ห้องเก็บแล้ว/กำลังส่ง สรุปจำนวนส่งสำเร็จ ไม่เชื่อม mute ล้มเหลวและข้าม ไม่มีรายชื่อ/ข้อมูล chat ใน response ใช้ timeout 120 วินาที การตรวจ ownership และ missing recipients อยู่ backend ทั้งหมด `useTelegram.ts` และ types ตรงกับ M4 contract ไม่มีการ import ข้าม backend
+
+M5 เพิ่ม `ClassLive.vue` ในสตรีม, `/live/join` และ `/live/:id/attendance` ครูเริ่ม/จบ/ดูเช็คชื่อ/เตือนคนขาด นักเรียนขอลิงก์เฉพาะตนจากห้องได้แม้ไม่ใช้ Telegram Auth redirect ยอมรับเฉพาะ `/live/join?t=<64hex>` พร้อม tests ป้องกัน open redirect และ URL injection
+
+หน้า join ไม่เรียก check-in ระหว่าง SSR รอผู้ใช้กดเข้า นำ token ออกจาก URL ก่อนส่ง custom-header GET ไป API และโหลด external_api.js ชื่อแสดง/สื่อที่เลือกเปิดส่งไปยัง Jitsi หลังผู้ใช้ยืนยัน มี no-referrer, กล้อง/ไมค์เริ่มปิด, script timeout10s, Jitsi listeners/dispose และ fallbackแท็บใหม่ ตรวจ session ทุก15s ปิด iframeเมื่อจบ/หมดสิทธิ์ ออกจากหน้าส่ง beacon JSON แบบ best effort ไม่เก็บ tokenในlocalStorage เช็คชื่อหน้าเว็บไม่ใช่ระยะเวลาวิดีโอจริงหรือหลักฐานยืนยันตัวบุคคล หลายแท็บ/แท็บใหม่มีข้อจำกัดตาม README ราก
 
 กำหนดส่งในฟอร์ม datetime-local ใช้ timezone ของอุปกรณ์ครูและส่ง ISO UTC ไป API คำตอบส่งเป็น JSON หรือ FormData โดยไม่ตั้ง multipart Content-Type เอง ไฟล์เดิมเก็บไว้จนเลือกแทน/ลบ จำกัดชนิด/ขนาดฝั่ง UI เพื่อช่วยผู้ใช้ และ backend ตรวจจริงซ้ำ Browser timeout สำหรับไฟล์ 120 วินาที คะแนน 0 แสดงได้และปิดการแก้คำตอบเช่นเดียวกับคะแนนอื่น แก้กำหนดส่งแล้วรายการส่งช้า refresh ตาม API
 

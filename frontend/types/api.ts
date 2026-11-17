@@ -5,7 +5,7 @@ export interface ApiErrorResponse { error: { code: string; message: string } }
 export interface LoginInput { email: string; password: string }
 export interface RegisterInput extends LoginInput { name: string }
 export interface AuthData { user: User }
-export interface OverviewData extends AuthData { milestone: 'M4' }
+export interface OverviewData extends AuthData { milestone: 'M5' }
 export interface Classroom {
   id: number; teacher_id: number; teacher_name: string; name: string; section: string;
   join_code?: string; archived: boolean; member_count: number; created_at: string;
@@ -33,3 +33,10 @@ export interface TodoRow { assignment: Assignment; submission: PublicSubmission 
 export interface TelegramStatus { configured: boolean; connected: boolean; muted: boolean }
 export interface TelegramLink { url: string; expires_at: string }
 export interface ReminderResult { total: number; sent: number; unlinked: number; muted: number; failed: number; skipped: number }
+export interface LiveSession {
+  id: number; class_id: number; class_name: string; class_archived: boolean; title: string;
+  scheduled_at: string | null; started_at: string | null; ended_at: string | null; created_by: number;
+}
+export interface LiveEntry { session: LiveSession; room_name: string; display_name: string; domain: string }
+export interface LiveAttendanceRow { user_id: number; name: string; joined_at: string | null; left_at: string | null }
+export interface LiveAttendance { session: LiveSession; students: LiveAttendanceRow[] }

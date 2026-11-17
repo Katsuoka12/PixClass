@@ -5,7 +5,7 @@ import type { NotificationHooks, ReminderResult, TelegramButton, TelegramStore }
 
 export type TelegramSend = (chatId: number, text: string, buttons?: TelegramButton[], beforeSend?: () => Promise<void>) => Promise<void>;
 type Outcome = 'sent' | 'unlinked' | 'muted' | 'failed' | 'skipped';
-interface Meta { kind: string; refId: number | null; classId?: number; missingAssignmentId?: number }
+interface Meta { kind: string; refId: number | null; classId?: number; missingAssignmentId?: number; eligible?: () => Promise<boolean> }
 class SkippedDelivery extends Error { constructor(public outcome: Outcome) { super(outcome); } }
 
 export function createNotifications(store: TelegramStore, assignments: AssignmentStore, classes: ClassStore, send: TelegramSend | null, webUrl: string) {
@@ -15,14 +15,14 @@ export function createNotifications(store: TelegramStore, assignments: Assignmen
     let error: string | null = null;
     try {
       const account = await store.account(userId);
-      if (!account?.is_active || (meta.classId !== undefined && !await store.eligible(userId, meta.classId, meta.missingAssignmentId))) outcome = 'skipped';
+      if (!account?.is_active || (meta.classId !== undefined && !await store.eligible(userId, meta.classId, meta.missingAssignmentId)) || (meta.eligible && !await meta.eligible())) outcome = 'skipped';
       else if (!account.chat_id) outcome = 'unlinked';
       else if (account.muted) outcome = 'muted';
       else if (!send) { outcome = 'skipped'; error = 'TELEGRAM_DISABLED'; }
       else {
         await send(account.chat_id, text, buttons, async () => {
           const current = await store.account(userId);
-          if (!current?.is_active || current.chat_id !== account.chat_id || (meta.classId !== undefined && !await store.eligible(userId, meta.classId, meta.missingAssignmentId))) throw new SkippedDelivery('skipped');
+          if (!current?.is_active || current.chat_id !== account.chat_id || (meta.classId !== undefined && !await store.eligible(userId, meta.classId, meta.missingAssignmentId)) || (meta.eligible && !await meta.eligible())) throw new SkippedDelivery('skipped');
           if (current.muted) throw new SkippedDelivery('muted');
         });
         outcome = 'sent';

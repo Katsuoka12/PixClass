@@ -1,6 +1,8 @@
 <script setup lang="ts">
 const props = defineProps<{ mode: 'login' | 'register' }>();
 const auth = useAuth();
+const route = useRoute();
+useHead({ meta: [{ name: 'referrer', content: 'no-referrer' }] });
 const name = ref('');
 const email = ref('');
 const password = ref('');
@@ -19,7 +21,7 @@ async function submit() {
   try {
     if (isRegister.value) await auth.register({ name: name.value, email: email.value, password: password.value });
     else await auth.login({ email: email.value, password: password.value });
-    await navigateTo(`/${auth.user.value!.role}`);
+    await navigateTo(liveRedirect(route.query.redirect) ?? `/${auth.user.value!.role}`);
   } catch (cause) {
     error.value = apiErrorMessage(cause);
   } finally { pending.value = false; }

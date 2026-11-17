@@ -1,4 +1,4 @@
-# Student Tag REST API — M4
+# Student Tag REST API — M5
 
 Base path `/api` JSON UTF-8. Success returns `{ "data": ... }` except logout 204. Error always `{ "error": { "code": "CODE", "message": "ข้อความภาษาไทย" } }`. Never returns passwords, hashes, JWT, stack traces or raw database errors.
 
@@ -17,7 +17,7 @@ Base path `/api` JSON UTF-8. Success returns `{ "data": ... }` except logout 204
 type Role = 'admin' | 'teacher' | 'student';
 interface User { id: number; role: Role; name: string; email: string }
 interface AuthData { user: User }
-interface OverviewData { user: User; milestone: 'M4' }
+interface OverviewData { user: User; milestone: 'M5' }
 ```
 
 Email is trimmed, lowercased, validated and at most 254 characters. Name is trimmed, 1–100 characters. Password is not trimmed, must have at least 8 characters and at most **72 UTF-8 bytes** (bcrypt input boundary). Login and register enforce the same password boundary.
@@ -222,9 +222,46 @@ Only this exact POST bypasses browser CSRF; the secret does not authorize any co
 
 Additional HTTP error: 503 TELEGRAM_NOT_CONFIGURED. Link consumption errors INVALID_LINK (400) and TELEGRAM_ALREADY_LINKED (409) are internal domain errors translated into safe Thai bot replies; there is no public link-consume HTTP endpoint.
 
+## M5 Live Class and attendance
+
+```ts
+interface LiveSession {
+  id:number; class_id:number; class_name:string; class_archived:boolean; title:string;
+  scheduled_at:string|null; started_at:string|null; ended_at:string|null; created_by:number;
+}
+interface AttendanceRow { user_id:number; name:string; joined_at:string|null; left_at:string|null }
+interface LiveAttendance { session:LiveSession; students:AttendanceRow[] }
+interface LiveEntry { session:LiveSession; room_name:string; display_name:string; domain:string }
+```
+
+| Method | Path | Permission | Request | Success |
+|---|---|---|---|---|
+| GET | `/classes/:id/live` | Owner/current student member | None | 200 `{data:{sessions:LiveSession[]}}` newest first |
+| POST | `/classes/:id/live/start` | Owning teacher, active class | `{title:string}` | 201 `{data:{session:LiveSession}}` |
+| POST | `/live/:id/link` | Owner/current member, active class/session | `{}` | 201 `{data:{url:string,expires_at:string}}` |
+| GET | `/live/join?t=<token>` | Current active account matching token, class access + explicit header | Only query `t` (64 lowercase hex) and `X-Live-Join: 1` | 200 `{data:LiveEntry}`; records check-in |
+| POST | `/live/:id/leave` | Current owner/member | `{}` | 204; idempotent |
+| POST | `/live/:id/end` | Owning teacher | `{}` | 200 `{data:{session:LiveSession}}`; idempotent |
+| GET | `/live/:id/attendance` | Owning teacher | None | 200 `{data:LiveAttendance}` |
+| POST | `/live/:id/remind-absent` | Owning teacher; ended session | `{}` | 200 `{data:ReminderResult}` as M4 |
+
+IDs positive uint32. Title trimmed1–200. No unknown input fields/query parameters except join.t. All POST routes retain cookie CSRF Origin checks, including best-effort beacon leave. GET join additionally requires X-Live-Join:1 and rejects Sec-Fetch-Site:cross-site so normal navigation/prefetch/images cannot record attendance. Frontend fetches only on an explicit entry action, never SSR. Cache-Control:no-store; join response Referrer-Policy:no-referrer. Browser login return accepts only `/live/join?t=<64hex>`; external/extra-query redirects rejected.
+
+Class-first READ COMMITTED transactions serialize start, join, end, archive and member removal. Only one open session/class. Room names `st-<48 random hex>` from crypto.randomBytes(24). List/start/end/attendance never include room_name; only successful scoped token entry exposes it and the configured JITSI_DOMAIN. get/token/join recheck current user active role and owner/membership; admin has no classroom override. Archived lists/attendance are readable; start/token/join blocked. End and leave allow archive cleanup.
+
+Live tokens crypto.randomBytes(32), stored in existing live_tokens, bound to current user/session, expire in2h. They are reusable until expiry to allow reload/re-entry; used_at records first successful use. Token expiry is checked after acquiring locks. Sharing a token with another account does not grant entry. End blocks every token for that session. A new token is obtainable through the classroom without Telegram. Invite URLs point to WEB_URL/live/join?t=token, never directly to Jitsi; API cookie authentication remains required. App/proxy logs must redact join query strings and login redirect queries; never log token/link URL bodies.
+
+Check-in records opening the authenticated Student Tag live page, before establishing Jitsi media. One attendance row peruser/session, earliest joined_at retained and left_at cleared on re-entry. videoConferenceLeft/readyToClose, explicit exit and pagehide beacon update left_at best effort; duplicate exits do not move it. End stamps all still-open rows with ended_at. A beacon from an old tab can mark the user's shared attendance row as left even if another tab remains open; no per-tab duration/proctoring guarantees. Attendance shows current active enrolled students only (teacher excluded), null joined_at means absent. Membership changes after a class alter the current roster; historical immutable rosters are outside MVP.
+
+Start dispatches per-student live_invite messages after commit via shared M4 notify. Message text/log payload contains no bearer token; button contains individual URL. Queued sends recheck account/mute/member and live status. Ended-only absent reminders use live_absent kind and recheck absence before sending. M4 delivery counters/throttling/failure behavior apply. Disabled/unlinked Telegram never blocks classroom entry. Archived-class reminder requests reject409 CLASS_ARCHIVED; if archived after dispatch begins, queued recipients are skipped. Start limited10/5min/user; link30/min/user; join60/min/user; absent reminder1/min/teacher. Long batches may exceed120s UI timeout; inspect log before retrying.
+
+Jitsi external_api.js is loaded client-side only after user entry, from HTTPS configured domain, using userInfo.displayName, startWithAudioMuted/startWithVideoMuted=true, addListener and dispose. No student email/answer/grade is sent to Jitsi. Token query is removed before third-party loading, with no-referrer metadata/links. A10s script timeout exposes fallback. Public meet.jit.si may require creator login; fallback opens the random room URL in a separate tab. App tokens do not secure public Jitsi URLs or grant Jitsi moderator rights; closing a Student Tag session does not forcibly destroy the external conference. Separate tabs cannot report actual Jitsi hangup. Existing15-minute JWT expiry still applies; on expiry the page closes the embed and asks the user to log in/re-enter. Use a controlled Jitsi deployment and HTTPS for production; do not treat attendance as identity or call-duration proof.
+
+Additional domain errors: LIVE_NOT_FOUND404, INVALID_LIVE_TOKEN400 (missing/expired/other-account token), LIVE_ALREADY_ACTIVE409, LIVE_ENDED409, LIVE_NOT_ENDED409. Existing CLASS_NOT_FOUND404, CLASS_ARCHIVED409, FORBIDDEN403, UNAUTHENTICATED401, VALIDATION_ERROR400, CSRF_REJECTED403, RATE_LIMITED429 apply.
+
 ## Future milestones
 
-Live/attendance (M5), admin user management and scheduled reminders (M6) are not implemented routes. Schema includes their tables as required by M1. Extend this contract when implementing each milestone, then update independently maintained frontend types.
+Admin user management and scheduled reminders (M6) are not implemented routes. Schema includes their tables as required by M1. Extend this contract when implementing each milestone, then update independently maintained frontend types.
 
 ## References checked for installed major versions
 
