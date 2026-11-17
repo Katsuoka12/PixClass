@@ -11,8 +11,10 @@ import type { ClassStore } from './classrooms.js';
 import { classesRouter } from './routes/classes.js';
 import type { AssignmentStore } from './assignments.js';
 import { assignmentsRouter } from './routes/assignments.js';
+import type { TelegramIntegration } from './telegram.js';
+import { telegramRouter } from './routes/telegram.js';
 
-export function createApp(config: AppConfig, users: UserStore, classes?: ClassStore, assignments?: AssignmentStore, uploadRoot?: string) {
+export function createApp(config: AppConfig, users: UserStore, classes?: ClassStore, assignments?: AssignmentStore, uploadRoot?: string, telegram?: TelegramIntegration) {
   const app = express();
   app.disable('x-powered-by');
   // Only the local Nuxt/reverse proxy may supply client forwarding headers.
@@ -20,6 +22,7 @@ export function createApp(config: AppConfig, users: UserStore, classes?: ClassSt
   app.use(helmet());
   app.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
   app.use(cors({ origin: config.WEB_URL, credentials: true }));
+  if (telegram?.webhook) app.post('/api/telegram/webhook', telegram.webhook);
   app.use((req, _res, next) => {
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)
       && (req.get('Origin') !== config.WEB_URL || req.get('Sec-Fetch-Site') === 'cross-site')) {
@@ -30,13 +33,14 @@ export function createApp(config: AppConfig, users: UserStore, classes?: ClassSt
   app.use(express.json({ limit: '16kb' }));
   app.use(cookieParser());
   app.use('/api/auth', authRouter(config, users));
-  if (classes) app.use('/api/classes', classesRouter(config, users, classes));
-  if (assignments) app.use('/api', assignmentsRouter(config, users, assignments, uploadRoot));
+  if (classes) app.use('/api/classes', classesRouter(config, users, classes, telegram?.hooks));
+  if (assignments) app.use('/api', assignmentsRouter(config, users, assignments, uploadRoot, telegram?.hooks));
+  if (telegram) app.use('/api', telegramRouter(config, users, telegram));
   // Role-specific landing data, separate from classroom authorization.
   for (const role of ['admin', 'teacher', 'student'] as const) {
     app.get(`/api/${role}/overview`, authenticate(config, users), requireRole(role), (req, res) => {
       z.strictObject({}).parse(req.query);
-      res.json({ data: { user: publicUser(res.locals.user), milestone: 'M3' } });
+      res.json({ data: { user: publicUser(res.locals.user), milestone: 'M4' } });
     });
   }
   app.use((_req, _res, next) => next(new ApiError(404, 'NOT_FOUND', 'ไม่พบข้อมูลที่ต้องการ')));

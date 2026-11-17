@@ -1,4 +1,4 @@
-# Student Tag Web — M3
+# Student Tag Web — M4
 
 Nuxt stable 4.6.4 + Vue 3 Composition API + strict TypeScript ใช้ Node 24 LTS >=24.15.0 ติดตั้งแยกจาก backend:
 
@@ -20,6 +20,10 @@ production ต้องมี reverse proxy `/api/*` ไป Express และต
 `types/api.ts` เขียนตาม [../docs/api.md](../docs/api.md) ไม่มี import type/code จาก backend ไม่มี dependency แชร์กัน ไม่มี `v-html`, analytics, remote fonts หรือ external asset requests ข้อความประกาศ/คำตอบ/คอมเมนต์แสดงแบบ plain text รักษาบรรทัดใหม่ เวลาแสดงโซน Asia/Bangkok รหัสห้องแสดงเฉพาะครูเจ้าของห้องที่ยังเปิดอยู่
 
 M3: แท็บงานมีฟอร์มสร้างงานและรายการจริง `/assignments/:id` แสดงรายละเอียด/แก้ไข/ลบสำหรับครู นักเรียนส่งและแก้ข้อความ/ไฟล์ก่อนตรวจ ครูเห็นรายการส่งและให้คะแนน `/classes/:id/grades` มี Gradebook นักเรียน×งาน และ `/todo` เป็นงานของฉันสำหรับ student เท่านั้น API ตรวจสิทธิ์จริงทุกครั้ง
+
+M4: `/profile` ใช้ได้ทุก role ที่ login แสดงสถานะ Telegram และสร้างลิงก์ใช้ครั้งเดียว ผู้ใช้กด anchor เปิด t.me เองหลัง API ตอบ (ไม่ใช้ popup ที่เบราว์เซอร์อาจบล็อก) ไม่บันทึก link token ใน localStorage หรือ log ตรวจสถานะหลังกลับจากบอท หาก backend ไม่ตั้ง credentials จะปิดปุ่มเชื่อม พร้อมคำแนะนำ การ mute/unmute ใช้คำสั่งในบอท
+
+หน้างานครูมีปุ่มเตือนคนที่ยังไม่ส่ง ปิดเมื่อไม่มีคนค้าง/ห้องเก็บแล้ว/กำลังส่ง สรุปจำนวนส่งสำเร็จ ไม่เชื่อม mute ล้มเหลวและข้าม ไม่มีรายชื่อ/ข้อมูล chat ใน response ใช้ timeout 120 วินาที การตรวจ ownership และ missing recipients อยู่ backend ทั้งหมด `useTelegram.ts` และ types ตรงกับ M4 contract ไม่มีการ import ข้าม backend
 
 กำหนดส่งในฟอร์ม datetime-local ใช้ timezone ของอุปกรณ์ครูและส่ง ISO UTC ไป API คำตอบส่งเป็น JSON หรือ FormData โดยไม่ตั้ง multipart Content-Type เอง ไฟล์เดิมเก็บไว้จนเลือกแทน/ลบ จำกัดชนิด/ขนาดฝั่ง UI เพื่อช่วยผู้ใช้ และ backend ตรวจจริงซ้ำ Browser timeout สำหรับไฟล์ 120 วินาที คะแนน 0 แสดงได้และปิดการแก้คำตอบเช่นเดียวกับคะแนนอื่น แก้กำหนดส่งแล้วรายการส่งช้า refresh ตาม API
 

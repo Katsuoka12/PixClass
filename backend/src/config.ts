@@ -16,9 +16,18 @@ export const configSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().default(''),
   TELEGRAM_BOT_USERNAME: z.string().default(''),
   TELEGRAM_MODE: z.enum(['polling', 'webhook']).default('polling'),
+  TELEGRAM_WEBHOOK_SECRET: z.string().default(''),
   JITSI_DOMAIN: z.string().regex(/^[a-zA-Z0-9.-]+(?::\d+)?$/).default('meet.jit.si'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 }).superRefine((value, context) => {
+  if (value.TELEGRAM_BOT_TOKEN || value.TELEGRAM_BOT_USERNAME) {
+    if (!/^\d+:[A-Za-z0-9_-]{20,}$/.test(value.TELEGRAM_BOT_TOKEN)) context.addIssue({ code: 'custom', path: ['TELEGRAM_BOT_TOKEN'], message: 'Invalid bot token' });
+    if (!/^[A-Za-z][A-Za-z0-9_]{1,28}bot$/i.test(value.TELEGRAM_BOT_USERNAME)) context.addIssue({ code: 'custom', path: ['TELEGRAM_BOT_USERNAME'], message: 'Invalid bot username' });
+    if (value.TELEGRAM_MODE === 'webhook') {
+      if (!/^[A-Za-z0-9_-]{32,256}$/.test(value.TELEGRAM_WEBHOOK_SECRET)) context.addIssue({ code: 'custom', path: ['TELEGRAM_WEBHOOK_SECRET'], message: 'Webhook secret required' });
+      if (!URL.canParse(value.WEB_URL) || !value.WEB_URL.startsWith('https://') || ['localhost', '127.0.0.1', '[::1]'].includes(new URL(value.WEB_URL).hostname)) context.addIssue({ code: 'custom', path: ['WEB_URL'], message: 'Webhook requires public HTTPS' });
+    }
+  }
   if (value.NODE_ENV === 'production' && !value.WEB_URL.startsWith('https://')) {
     context.addIssue({ code: 'custom', path: ['WEB_URL'], message: 'Production requires HTTPS' });
   }

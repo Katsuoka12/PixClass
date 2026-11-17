@@ -4,9 +4,9 @@
 
 ## สถานะ
 
-เสร็จถึง **M3: งาน + ส่งงาน + ให้คะแนน** — รวม Auth, ห้องเรียน/ประกาศ, ครูสร้าง/แก้/ลบงาน, นักเรียนส่งข้อความและไฟล์, ครูตรวจคะแนนพร้อมคอมเมนต์, Gradebook และหน้า “งานของฉัน”
+พัฒนาถึง **M4: เชื่อม Telegram** — รวม Auth, ห้องเรียน/ประกาศ, งาน/ส่งงาน/คะแนน, Gradebook, งานของฉัน, โปรไฟล์ผูก Telegram, แจ้งงาน/ประกาศ/คะแนนและเตือนคนค้างส่ง รองรับ polling และ webhook การส่งผ่าน Telegram จริงยังรอ Bot credentials ของผู้ใช้
 
-หน้าห้องมีสตรีม / งานในชั้นเรียน / บุคคล / คะแนน (ครู) นักเรียนเปิด “งานของฉัน” จากแถบบนได้ ยังไม่เริ่ม M4–M6: Telegram, Jitsi, cron และจัดการผู้ใช้แบบ Admin
+หน้าห้องมีสตรีม / งานในชั้นเรียน / บุคคล / คะแนน (ครู) นักเรียนเปิด “งานของฉัน” จากแถบบนได้ ทุก role เปิดโปรไฟล์ได้ ยังไม่เริ่ม M5–M6: Jitsi, cron และจัดการผู้ใช้แบบ Admin
 
 สีตาม [พาเลตที่เลือก](https://colorhunt.co/palette/f3f6f47d8d395b6e2cff5a22): `#F3F6F4`, `#7D8D39`, `#5B6E2C`, `#FF5A22` ใช้ฟอนต์ **Anuphan (อนุพันธ์)** แบบ variable ที่เก็บในเว็บเอง รองรับไทย/อังกฤษ ไม่มีการส่งข้อมูลนักเรียนไปโหลดฟอนต์หรือ analytics ภายนอก
 
@@ -96,7 +96,21 @@ cd backend && npm run build
 cd ../frontend && npm run build
 ```
 
-ยังไม่มี lint script ใช้ strict typecheck, tests และ build เป็น checks ผลตรวจจริงอยู่ใน [M1 verification](docs/m1-verification.md), [M2 verification](docs/m2-verification.md) และ [M3 verification](docs/m3-verification.md)
+ยังไม่มี lint script ใช้ strict typecheck, tests และ build เป็น checks ผลตรวจจริงอยู่ใน [M1 verification](docs/m1-verification.md), [M2 verification](docs/m2-verification.md), [M3 verification](docs/m3-verification.md) และ [M4 verification](docs/m4-verification.md)
+
+## ตั้งค่าและทดลอง Telegram (M4)
+
+1. สร้างบอทกับ **@BotFather** ด้วย `/newbot` แล้วใส่ `TELEGRAM_BOT_TOKEN` และ `TELEGRAM_BOT_USERNAME` (ไม่ใส่ @) ใน `backend/.env` โดยตรง ห้ามส่ง token ลงแชตหรือ commit ไฟล์จริง ค่า username ต้องตรงกับบอทที่ token ใช้งาน
+2. ตั้ง `TELEGRAM_MODE=polling` แล้ว restart API ใช้บอทเดียวต่อหนึ่ง process ถ้ายังไม่ตั้งทั้งสองค่า เว็บยังทำงานได้ แต่ปุ่มเชื่อม Telegram ปิดอยู่
+3. Login นักเรียน → **โปรไฟล์** → **เชื่อมต่อ Telegram** → **เปิด Telegram เพื่อเชื่อมบัญชี** → กด Start ในแชตส่วนตัว กลับเว็บกด **ตรวจสอบสถานะ** ลิงก์อายุ 15 นาทีใช้ครั้งเดียว สร้างใหม่ยกเลิกลิงก์เดิม อย่าส่งลิงก์ให้ผู้อื่น
+4. ครูสร้างงาน/โพสต์ประกาศ/ให้คะแนน นักเรียนที่เชื่อมและเปิดแจ้งเตือนจะได้รับข้อความ ครูเปิดหน้างานแล้วกด **เตือนคนที่ยังไม่ส่ง** ดูจำนวนสำเร็จ/ไม่เชื่อม/mute/ล้มเหลว/ข้าม
+5. บอทรองรับ `/tasks`, `/grades`, `/classes`, `/mute`, `/unmute` เฉพาะแชตส่วนตัว บัญชีที่ถูกระงับใช้คำสั่งข้อมูลไม่ได้ การ mute หยุดเฉพาะแจ้งเตือนอัตโนมัติและข้อความเตือนจากครู
+
+Polling รับคำสั่งได้โดยไม่ต้องมี URL สาธารณะ แต่ **ปุ่มเปิดเว็บในข้อความ Telegram ใช้ localhost ไม่ได้** เมื่อต้องทดสอบข้อความพร้อมปุ่ม ให้เปิด tunnel ที่พอร์ต Nuxt 3000 เช่น `ngrok http 3000` หรือ `cloudflared tunnel --url http://localhost:3000` นำ HTTPS origin ที่ได้มาใส่ `WEB_URL` (ไม่มี slash ปิดท้าย) restart backend และเปิดเว็บผ่าน origin นี้เพื่อให้ cookie/CSRF ตรงกัน Nuxt proxy `/api` ยังชี้ backend loopback 4000; ไม่เปิดพอร์ต MariaDB
+
+Production/webhook: ตั้ง `TELEGRAM_MODE=webhook`, `WEB_URL=https://<your-domain>` และสุ่ม `TELEGRAM_WEBHOOK_SECRET` อย่างน้อย 32 ตัวอักษร เช่นคำสั่ง randomBytes ด้านบน Runtime ลงทะเบียน URL `WEB_URL/api/telegram/webhook` ให้อัตโนมัติ ต้องมี HTTPS reverse proxy ที่ส่ง `/api/*` ไป API และคง header `X-Telegram-Bot-Api-Secret-Token` ไว้ คำขอ webhook ไม่ใช้ cookie/Origin และตรวจ secret แยกจาก CSRF เปิดเผยเฉพาะเว็บ/API ผ่าน proxy; backend และ DB อยู่ loopback กลับมา polling ระบบลบ webhook เดิมโดยไม่ทิ้ง pending updates
+
+ข้อจำกัด M4: แจ้งเตือนทำหลังบันทึกข้อมูล ไม่มี persistent queue/retry เมื่อ process ปิดอาจสูญเสียข้อความที่รอส่ง ครูส่งเตือนซ้ำได้หลัง 1 นาที ระบบบันทึก failed แล้วส่งคนอื่นต่อ ไม่มีการยกเลิกการผูก/ย้าย Telegram ไปบัญชีอื่นใน MVP หากต้องเปลี่ยนให้ผู้ดูแลตรวจและแก้ข้อมูลอย่างระมัดระวัง ยังไม่ได้ทดสอบส่งกับ Telegram จริงเพราะ environment นี้ไม่มี Bot credentials; automated flow ใช้ DB จริงและ transport จำลองโดยไม่ส่งข้อมูลนักเรียนออก
 
 ## ทดลองส่งงานและตรวจคะแนน (M3)
 
@@ -123,11 +137,11 @@ cd ../frontend && npm run build
 ## ข้อสมมติและการใช้งานจริง
 
 - Session อายุ 15 นาที ไม่มี refresh token; หมดอายุแล้วต้องเข้าสู่ระบบใหม่ Logout ลบ cookie ในเบราว์เซอร์ ส่วนสำเนา JWT ที่ถูกขโมยก่อน logout ยังมีอายุได้จนหมดเวลา การระงับบัญชีปฏิเสธได้ทันทีเพราะ API อ่านสถานะจาก DB ทุกคำขอ
-- API รับ JSON เท่านั้น ข้อมูลเกิน 16 KB ถูกปฏิเสธ รหัสผ่าน 8 ตัวอักษรขึ้นไปและไม่เกิน 72 ไบต์ UTF-8 เพื่อไม่ให้ bcrypt ตัดรหัสผ่านเงียบ ๆ
-- ทุก POST ต้องมี Origin ตรง `WEB_URL` (scheme + host + port ไม่มี `/` ปิดท้าย) และไม่ใช่ `Sec-Fetch-Site: cross-site` รวมถึง login/register/logout; curl/Postman ต้องใส่ Origin เช่นกัน
+- API JSON จำกัด 16 KB ยกเว้น Telegram webhook 256 KB; ส่งงานรองรับ multipart ตาม M3 รหัสผ่าน 8 ตัวอักษรขึ้นไปและไม่เกิน 72 ไบต์ UTF-8 เพื่อไม่ให้ bcrypt ตัดรหัสผ่านเงียบ ๆ
+- ทุก browser mutation ต้องมี Origin ตรง `WEB_URL` (scheme + host + port ไม่มี `/` ปิดท้าย) และไม่ใช่ `Sec-Fetch-Site: cross-site` รวมถึง login/register/logout; curl/Postman ต้องใส่ Origin เช่นกัน ยกเว้น Telegram webhook ที่ตรวจ secret ของตัวเอง
 - API bind ที่ loopback เท่านั้น Trust forwarding headers เฉพาะ loopback proxy ตั้ง reverse proxy ในเครื่องให้ **เขียนทับ header จาก client** และส่ง IP จริง ก่อนใช้กับผู้ใช้หลายคน/production ห้ามเปิดพอร์ต API/3306 ออกอินเทอร์เน็ต
 - Production ต้อง HTTPS, `NODE_ENV=production`, `WEB_URL=https://...`, secret ใหม่, DB user สิทธิ์เท่าที่จำเป็นและรหัสผ่านจริง ห้ามใช้บัญชี seed และต้องตั้งรหัส MySQL root
 - Nuxt `devProxy` ใช้เฉพาะตอน dev; production ต้อง reverse proxy `/api/*` ไป Express เอง ตั้ง `NUXT_API_SERVER_BASE=http://127.0.0.1:4000/api` ให้ SSR ด้วยเมื่อเปลี่ยนที่อยู่ API และไม่ cache HTML ที่มี session
 - Rate limit เป็น memory ของ API process: login/register แยกกันอย่างละ 10 ครั้ง/15 นาทีต่อ IP รีสตาร์ตแล้วเริ่มใหม่ เหมาะกับ API instance เดียว
-- Telegram/Jitsi ยังไม่ทำใน M1 เมื่อลงมือ M4/M5 จะตรวจเอกสารปัจจุบันก่อนตาม AGENTS.md สำหรับทดสอบปุ่ม Telegram ใช้ tunnel HTTPS (เช่น `cloudflared tunnel --url http://localhost:3000` หรือ `ngrok http 3000`) แล้วตั้ง `WEB_URL` เป็น public origin และเปิดเว็บผ่าน URL เดียวกัน บอท polling ไม่ต้องมี webhook public URL; ปุ่ม Telegram ใช้ localhost ไม่ได้
+- Jitsi จะทำใน M5 โดยตรวจเอกสารปัจจุบันก่อนตาม AGENTS.md การตั้งค่า Telegram และ tunnel สำหรับ M4 อยู่ในหัวข้อด้านบน
 - npm audit ของ frontend มี transitive advisories 10 รายการ (6 low / 4 moderate) ใน Nuxt/Nitro dependency chain ณ วันที่ทดสอบ ไม่มี high/critical แต่ยังต้องติดตาม upstream ก่อน deploy; ไม่ใช้ `audit fix --force` ซึ่งเสนอ downgrade Nuxt ขัดกับสเปก stable ล่าสุด

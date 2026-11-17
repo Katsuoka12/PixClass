@@ -8,6 +8,8 @@ import type { AppConfig, UserStore } from '../types.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { ApiError } from '../middleware/errors.js';
 import { uploadService } from '../uploads.js';
+import type { NotificationHooks } from '../telegram.js';
+import { dispatchNotification } from '../services/notify.js';
 
 const empty = z.strictObject({});
 const id = z.string().regex(/^[1-9]\d*$/).pipe(z.coerce.number<string>().int().positive().max(4294967295));
@@ -28,7 +30,7 @@ export function publicSubmission(submission: Submission) {
   return { ...rest, file_url: file_path ? `/api/submissions/${submission.id}/file` : null };
 }
 
-export function assignmentsRouter(config: AppConfig, users: UserStore, store: AssignmentStore, directory?: string) {
+export function assignmentsRouter(config: AppConfig, users: UserStore, store: AssignmentStore, directory?: string, notifications?: NotificationHooks) {
   const router = Router();
   const auth = authenticate(config, users);
   const teacher = requireRole('teacher');
@@ -42,6 +44,8 @@ export function assignmentsRouter(config: AppConfig, users: UserStore, store: As
   });
   router.post('/classes/:id/assignments', auth, teacher, async (req, res) => {
     const assignment = await store.create(parseId(req), res.locals.user, createSchema.parse(req.body));
+    const teacherUser = res.locals.user;
+    dispatchNotification(notifications ? () => notifications.assignment(assignment.id, teacherUser) : undefined);
     res.status(201).json({ data: { assignment } });
   });
   router.get('/assignments/:id', auth, async (req, res) => {
@@ -84,6 +88,8 @@ export function assignmentsRouter(config: AppConfig, users: UserStore, store: As
   });
   router.patch('/submissions/:id/grade', auth, teacher, async (req, res) => {
     const submission = await store.grade(parseId(req), res.locals.user, gradeSchema.parse(req.body));
+    const teacherUser = res.locals.user;
+    dispatchNotification(notifications ? () => notifications.grade(submission, teacherUser) : undefined);
     res.json({ data: { submission: publicSubmission(submission) } });
   });
   router.get('/submissions/:id/file', auth, async (req, res, next) => {

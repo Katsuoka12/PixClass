@@ -1,4 +1,4 @@
-# Student Tag API — M3
+# Student Tag API — M4
 
 Express 5 + strict TypeScript + zod 4 + mysql2/promise SQL ตรง ใช้ Node 24 LTS >=24.15.0 ติดตั้งและรันจากโฟลเดอร์นี้:
 
@@ -45,4 +45,12 @@ Uploads ใช้ Multer 2.5.0 + file-type 22.3.0, disk storage ไม่เก�
 
 ชนิดไฟล์ตรวจจาก signature และเทียบกับนามสกุล ไม่ใช่ malware scan ไม่ส่งข้อมูลออกบริการอื่น หลัง DB บันทึกสำเร็จจึงลบไฟล์เก่าที่ถูกแทน/ลบ หาก disk cleanup ผิดพลาดจะ log ข้อความทั่วไปและเก็บผล DB ไว้ ผู้ดูแลควรตรวจพื้นที่เก็บและไฟล์ orphan หลังเหตุขัดข้อง
 
-ยังไม่มี Telegram bot/cron ใน M3 ค่าที่เตรียมไว้ใน `.env.example` ยังไม่เริ่มใช้ เช็กรายละเอียด production และ proxy ใน README ราก
+M4 เพิ่ม grammy 1.46.0, `telegram-db.ts`, `telegram.ts`, `bot/telegram.ts`, `bot/runtime.ts`, `services/notify.ts` และ `routes/telegram.ts` ไม่ต้อง migrate schema ใช้ตาราง Telegram/log ที่สร้างตั้งแต่ M1 Tests เพิ่มทั้ง SQL token/recipient และ HTTP→SQL→grammy transport จำลอง (ไม่มี network จริง) รวมอยู่ใน `npm run test:db`
+
+ตั้ง TELEGRAM_BOT_TOKEN + TELEGRAM_BOT_USERNAME คู่กันเพื่อเปิดระบบ; ไม่ตั้งเว็บยังทำงานได้ ดูขั้นตอน BotFather และ tunnel ใน README ราก Polling ลบ webhook ก่อนเริ่มโดยไม่ทิ้ง pending updates; webhook ต้อง public HTTPS WEB_URL และ TELEGRAM_WEBHOOK_SECRET 32–256 ตัวอักษร A-Z/a-z/0-9/_/- Runtime ตรวจ username กับ getMe ก่อนรับงาน API boot หาก credentials ผิดจะรายงานข้อความทั่วไปโดยไม่แสดง secret
+
+Webhook POST `/api/telegram/webhook` ตรวจ secret ด้วย timingSafeEqual ก่อน parse JSON และอยู่ก่อน cookie CSRF เฉพาะ path นี้ เก็บ token/link URL เฉพาะใน DB/response ที่จำเป็น ห้ามตั้ง access log ให้บันทึก body ของ webhook หรือ response link-token reverse proxy ต้องส่ง secret header ต่อ
+
+แจ้งงาน/ประกาศ/คะแนนหลัง DB commit ไม่ทำให้ข้อมูลหลักย้อนกลับเมื่อส่งไม่ได้ มีคิวใน process เดียว หน่วง 50ms ทุกข้อความ/1s ต่อ chat และเคารพ retry_after จาก 429 แต่ไม่ retry ข้อความล้มเหลวอัตโนมัติ ตรวจ active/member/mute/คนยังไม่ส่งอีกครั้งหลังรอคิว บันทึก notification_log sent/failed/skipped ด้วย fixed error codes และไม่มี raw Telegram errors ซึ่งอาจมี credential ไม่มี persistent outbox: process crash อาจทำข้อความหายและกรณีส่งสำเร็จแต่ DB log ล้มอาจไม่มี log ผู้ดูแลควรตรวจ log/error และพื้นที่ DB ก่อนใช้งานจริง หลาย API instance ต้องเพิ่ม shared rate limiter ก่อนขยายระบบ
+
+M4 ยังไม่ได้ตรวจ real Telegram delivery เนื่องจากไม่มี credentials ใน environment นี้ ยังไม่มี cron/Jitsi เช็กรายละเอียด production และ proxy ใน README ราก

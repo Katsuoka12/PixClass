@@ -12,7 +12,7 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:db": "vitest run tests/database.integration.test.ts tests/classes.integration.test.ts tests/assignment-db.integration.test.ts tests/assignments.http.test.ts"
+    "test:db": "vitest run tests/database.integration.test.ts tests/classes.integration.test.ts tests/assignment-db.integration.test.ts tests/assignments.http.test.ts tests/telegram-db.integration.test.ts tests/telegram-flow.integration.test.ts"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -22,6 +22,7 @@
     "express": "^5.3.0",
     "express-rate-limit": "^8.7.4",
     "file-type": "^22.3.0",
+    "grammy": "^1.46.0",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.5.0",

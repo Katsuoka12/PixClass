@@ -1,4 +1,4 @@
-# Student Tag REST API — M3
+# Student Tag REST API — M4
 
 Base path `/api` JSON UTF-8. Success returns `{ "data": ... }` except logout 204. Error always `{ "error": { "code": "CODE", "message": "ข้อความภาษาไทย" } }`. Never returns passwords, hashes, JWT, stack traces or raw database errors.
 
@@ -6,7 +6,7 @@ Base path `/api` JSON UTF-8. Success returns `{ "data": ... }` except logout 204
 
 - JWT session cookie named `session`, HttpOnly, SameSite=Lax, Path=/, 15-minute Max-Age, Secure when WEB_URL is HTTPS. HS256, fixed issuer/audience, subject contains user ID only.
 - Every authenticated request checks the current user, active flag and role in MariaDB. Missing/expired/invalid cookie or inactive/deleted account → 401.
-- Every mutation must send `Origin: <WEB_URL>` and must not send `Sec-Fetch-Site: cross-site`; otherwise 403 CSRF_REJECTED, including login/register/logout. Origin-less CLI clients must add this header explicitly.
+- Every browser mutation must send `Origin: <WEB_URL>` and must not send `Sec-Fetch-Site: cross-site`; otherwise 403 CSRF_REJECTED, including login/register/logout. Origin-less CLI clients must add this header explicitly. Telegram webhook is the sole exception: it authenticates its own secret header, as documented below.
 - CORS allows only WEB_URL and credentials. Browser uses same-origin Nuxt `/api` proxy with credentials included; SSR forwards cookies directly to Express.
 - JSON maximum 16 KB. M3 submission PUT also accepts multipart as documented below. All documented object inputs are strict (unexpected fields rejected); no query parameters supported.
 - Authenticated UI route guards supplement API authorization. They do not authorize access themselves.
@@ -17,7 +17,7 @@ Base path `/api` JSON UTF-8. Success returns `{ "data": ... }` except logout 204
 type Role = 'admin' | 'teacher' | 'student';
 interface User { id: number; role: Role; name: string; email: string }
 interface AuthData { user: User }
-interface OverviewData { user: User; milestone: 'M3' }
+interface OverviewData { user: User; milestone: 'M4' }
 ```
 
 Email is trimmed, lowercased, validated and at most 254 characters. Name is trimmed, 1–100 characters. Password is not trimmed, must have at least 8 characters and at most **72 UTF-8 bytes** (bcrypt input boundary). Login and register enforce the same password boundary.
@@ -100,7 +100,7 @@ Dates are ISO 8601 UTC strings. `join_code` is included only for the owning teac
 - Join: code trimmed/uppercased, 6–20 ASCII alphanumeric characters to support seed SCI2026. New codes use crypto randomBytes(6), 12 uppercase hex characters with a UNIQUE DB constraint; retry collisions at most 5 times. Rate limit: 20 join attempts/minute/IP (counts valid and invalid attempts).
 - Existing members joining again receive 200 without duplicate membership rows. Archived rooms reject joins even for existing members. Students removed by the teacher lose all room/stream/people access and no longer see that room in their list; they can rejoin an active room using its code.
 - Archive is read-only. Existing participants retain room/stream/people reads. Edit/join/post/remove return 409 CLASS_ARCHIVED. Mutation SQL also predicates on active classroom status. No delete/unarchive endpoint in M2.
-- Announcement body: trimmed 1–5000 characters, literal plain text, newlines preserved; render with escaped text interpolation, never HTML. Telegram delivery is added in M4, not performed here.
+- Announcement body: trimmed 1–5000 characters, literal plain text, newlines preserved; render with escaped text interpolation, never HTML. M4 dispatches Telegram notifications after this write commits.
 - M2 errors add 404 CLASS_NOT_FOUND (missing room or join code), 404 MEMBER_NOT_FOUND (removal target absent), 409 CLASS_ARCHIVED; 403 FORBIDDEN for wrong role or nonparticipants. Authentication precedes validation; teacher-only mutations reject nonteachers before parsing body.
 - The grades UI route is teacher-only and also requires classroom access.
 
@@ -188,11 +188,43 @@ PUT accepts JSON `{answer_text?:string,remove_file?:boolean}` for text/removal o
 | 409 | MAX_POINTS_BELOW_GRADE | New max would invalidate existing grades |
 | 413 | FILE_TOO_LARGE | Attachment exceeds 10 MB |
 
-Existing auth/role/class/archive/CSRF/rate-limit errors still apply. No Telegram messages or reminders are sent in M3.
+Existing auth/role/class/archive/CSRF/rate-limit errors still apply.
+
+## M4 Telegram
+
+```ts
+interface TelegramStatus { configured: boolean; connected: boolean; muted: boolean }
+interface TelegramLink { url: string; expires_at: string }
+interface ReminderResult { total: number; sent: number; unlinked: number; muted: number; failed: number; skipped: number }
+```
+
+| Method | Path | Permission | Request | Success |
+|---|---|---|---|---|
+| GET | `/telegram/status` | Any active authenticated role | None | 200 `{data:TelegramStatus}` |
+| POST | `/telegram/link-token` | Any active authenticated role + CSRF | `{}` | 201 `{data:TelegramLink}` |
+| POST | `/assignments/:id/remind` | Owning teacher, active classroom + CSRF | `{}` | 200 `{data:ReminderResult}` |
+| POST | `/telegram/webhook` | Telegram secret header, webhook mode only; no cookie/Origin | Telegram Update JSON | 200 `{ok:true}` |
+
+- Status never exposes chat ID or link token. `configured` requires both bot token and username. Disabled integrations return 503 TELEGRAM_NOT_CONFIGURED from link/remind; status still works.
+- Link URL is `https://t.me/<username>?start=<32-hex-token>`. Token uses crypto.randomBytes(16), expires in 15 minutes, is consumed atomically once, and is never logged. Issuing a new token invalidates earlier unused tokens. Only private user chats can link. One chat per account and one account per chat; MVP does not transfer an already-linked account to a different chat. Invalid/expired/used links produce a safe bot reply; duplicate chat/account links request administrator assistance.
+- Link attempts limited to 5 per 15 minutes per authenticated user. Reminders limited to 1 per minute per teacher across assignments (including rejected attempts). Inputs are strict empty JSON objects, no query fields. Assignment IDs are positive uint32 integers. Existing 401/403/404/409 CLASS_ARCHIVED errors apply.
+- Reminder counts start with current active enrolled students with **no submission**, including exclusion of late/ungraded submissions. Each recipient is rechecked after waiting in the send queue. `unlinked` means no chat ID; `muted` means notifications disabled; `failed` includes Telegram send/network failure; `skipped` includes membership/archive/activity changes or disabled transport. All six counts are nonnegative integers; outcome counts sum to total. An empty audience returns zero counts. No recipient names/chat IDs returned.
+- Creating an assignment or announcement and grading/regrading a submission dispatches notifications **after DB commit**, without delaying or undoing the successful classroom response. Text-only submissions and zero grades are supported. New task/announcement audiences are active enrolled students; grades go only to the submission owner if still enrolled. No notifications on task edits/deletion or student submission edits.
+- Shared notify service checks active account, linkage, mute and class access; records `sent/failed/skipped` in notification_log with kind `assignment/announcement/grade/reminder`, event ref_id and bounded plain text payload. Errors contain safe fixed codes only. Delivery failures continue to the next user. Text is bounded below 4096 characters, user content is sent without parse_mode; no attachments/student answer files sent to Telegram.
+- One process-wide sequential send queue, minimum 50ms between sends and 1s per chat. A 429 response applies its retry_after cooldown to subsequent sends; the failed message is logged, not replayed. No persistent outbox/retry in M4; process restart or an unavailable DB can lose an in-flight notification/log. Manual reminder retry remains available. Multiple API instances require shared throttling before scaling.
+- Commands `/tasks`, `/grades`, `/classes`, `/mute`, `/unmute` operate on the current linked active account and current membership/ownership, only in private chats. Tasks/grades are student views; other roles get an empty list and web link. Commands reply even while muted. Lists show at most 15 items within the message limit with a link to the web for full data. `/start` alone gives linking instructions.
+
+### Webhook boundary
+
+Registered only when TELEGRAM_MODE=webhook and bot credentials are set. Requests must have `X-Telegram-Bot-Api-Secret-Token` equal to TELEGRAM_WEBHOOK_SECRET (32–256 allowed ASCII characters); constant-time comparison is used for equal-length secrets before parsing. Missing/wrong secret → 403 WEBHOOK_REJECTED. JSON limit 256 KB; zod validates update_id and relevant message/chat/from/entities shapes, allowing Telegram extension fields. Invalid payload → 400 VALIDATION_ERROR/INVALID_JSON; oversized → 413 PAYLOAD_TOO_LARGE. No query fields supported. Non-message updates are ignored successfully.
+
+Only this exact POST bypasses browser CSRF; the secret does not authorize any cookie-authenticated API. Runtime verifies bot username using getMe, registers commands and a public HTTPS WEB_URL `/api/telegram/webhook` with allowed_updates=[message], max_connections=1. Polling removes existing webhook without dropping pending updates. Do not run two polling processes with the same token. No bot/Telegram token appears in request paths or application logs. Reverse proxy must preserve the webhook secret header and avoid logging request bodies.
+
+Additional HTTP error: 503 TELEGRAM_NOT_CONFIGURED. Link consumption errors INVALID_LINK (400) and TELEGRAM_ALREADY_LINKED (409) are internal domain errors translated into safe Thai bot replies; there is no public link-consume HTTP endpoint.
 
 ## Future milestones
 
-Telegram (M4), live/attendance (M5), admin user management and reminders (M6) are not implemented routes. Schema includes their tables as required by M1. Extend this contract when implementing each milestone, then update independently maintained frontend types.
+Live/attendance (M5), admin user management and scheduled reminders (M6) are not implemented routes. Schema includes their tables as required by M1. Extend this contract when implementing each milestone, then update independently maintained frontend types.
 
 ## References checked for installed major versions
 

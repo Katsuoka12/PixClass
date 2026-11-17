@@ -6,6 +6,8 @@ import type { ClassStore, Classroom } from '../classrooms.js';
 import type { AppConfig, User, UserStore } from '../types.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { ApiError } from '../middleware/errors.js';
+import type { NotificationHooks } from '../telegram.js';
+import { dispatchNotification } from '../services/notify.js';
 
 const empty = z.strictObject({});
 const idSchema = z.string().regex(/^[1-9]\d*$/).pipe(z.coerce.number<string>().int().positive().max(4294967295));
@@ -24,7 +26,7 @@ function writable(room: Classroom) {
   if (room.archived) throw new ApiError(409, 'CLASS_ARCHIVED', 'ห้องเรียนนี้ถูกเก็บแล้ว อ่านข้อมูลเดิมได้เท่านั้น');
 }
 
-export function classesRouter(config: AppConfig, users: UserStore, store: ClassStore) {
+export function classesRouter(config: AppConfig, users: UserStore, store: ClassStore, notifications?: NotificationHooks) {
   const router = Router();
   router.use(authenticate(config, users));
   router.use((_req, res, next) => {
@@ -117,6 +119,7 @@ export function classesRouter(config: AppConfig, users: UserStore, store: ClassS
     writable(await access(id, res.locals.user));
     const announcement = await store.post(id, res.locals.user.id, body);
     if (!announcement) throw new ApiError(409, 'CLASS_ARCHIVED', 'ห้องเรียนนี้ถูกเก็บแล้ว');
+    dispatchNotification(notifications ? () => notifications.announcement(id, body, announcement.id) : undefined);
     res.status(201).json({ data: { announcement } });
   });
   return router;
