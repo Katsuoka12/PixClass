@@ -1,4 +1,4 @@
-# Student Tag Web — M5
+# Student Tag Web — M6
 
 Nuxt stable 4.6.4 + Vue 3 Composition API + strict TypeScript ใช้ Node 24 LTS >=24.15.0 ติดตั้งแยกจาก backend:
 
@@ -27,6 +27,10 @@ M4: `/profile` ใช้ได้ทุก role ที่ login แสดงส�
 หน้างานครูมีปุ่มเตือนคนที่ยังไม่ส่ง ปิดเมื่อไม่มีคนค้าง/ห้องเก็บแล้ว/กำลังส่ง สรุปจำนวนส่งสำเร็จ ไม่เชื่อม mute ล้มเหลวและข้าม ไม่มีรายชื่อ/ข้อมูล chat ใน response ใช้ timeout 120 วินาที การตรวจ ownership และ missing recipients อยู่ backend ทั้งหมด `useTelegram.ts` และ types ตรงกับ M4 contract ไม่มีการ import ข้าม backend
 
 M5 เพิ่ม `ClassLive.vue` ในสตรีม, `/live/join` และ `/live/:id/attendance` ครูเริ่ม/จบ/ดูเช็คชื่อ/เตือนคนขาด นักเรียนขอลิงก์เฉพาะตนจากห้องได้แม้ไม่ใช้ Telegram Auth redirect ยอมรับเฉพาะ `/live/join?t=<64hex>` พร้อม tests ป้องกัน open redirect และ URL injection
+
+M6 `/admin` เป็น dashboard จัดการผู้ใช้จริง: รายชื่อแบ่งหน้า50คน สร้างครู ระงับ/เปิดบัญชีพร้อมยืนยัน ปุ่มadminถูกป้องกันและAPIตรวจจริงซ้ำ ไม่เก็บรหัสผ่านในlocalStorage/logและล้างช่องหลังส่ง/ปิดฟอร์ม `/calendar` สำหรับteacher/studentเท่านั้น แสดงเดือน2000–2100ตามAsia/Bangkok บนdesktopเป็นgrid มือถือเป็นagenda มีลิงก์งานและสถานะ/คะแนนของนักเรียน ส่วน `/todo` เดิมคงแสดงงานไม่มีกำหนดส่ง
+
+`npm test` รัน5 Node helper tests: safe live redirect/Jitsi URL และBangkokวันที่เปลี่ยนตอน17:00UTC/explicitoffset, leapปี2100ไม่leap, ขอบเดือน/ปีและinputผิด ไม่มีdependencyเพิ่ม UIทำเฉพาะpresentation, monthselectionและAPI state การตรวจrole/ขอบเขตห้อง/ข้อมูลส่วนตัวอยู่backend
 
 หน้า join ไม่เรียก check-in ระหว่าง SSR รอผู้ใช้กดเข้า นำ token ออกจาก URL ก่อนส่ง custom-header GET ไป API และโหลด external_api.js ชื่อแสดง/สื่อที่เลือกเปิดส่งไปยัง Jitsi หลังผู้ใช้ยืนยัน มี no-referrer, กล้อง/ไมค์เริ่มปิด, script timeout10s, Jitsi listeners/dispose และ fallbackแท็บใหม่ ตรวจ session ทุก15s ปิด iframeเมื่อจบ/หมดสิทธิ์ ออกจากหน้าส่ง beacon JSON แบบ best effort ไม่เก็บ tokenในlocalStorage เช็คชื่อหน้าเว็บไม่ใช่ระยะเวลาวิดีโอจริงหรือหลักฐานยืนยันตัวบุคคล หลายแท็บ/แท็บใหม่มีข้อจำกัดตาม README ราก
 

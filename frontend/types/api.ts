@@ -5,7 +5,7 @@ export interface ApiErrorResponse { error: { code: string; message: string } }
 export interface LoginInput { email: string; password: string }
 export interface RegisterInput extends LoginInput { name: string }
 export interface AuthData { user: User }
-export interface OverviewData extends AuthData { milestone: 'M5' }
+export interface OverviewData extends AuthData { milestone: 'M6' }
 export interface Classroom {
   id: number; teacher_id: number; teacher_name: string; name: string; section: string;
   join_code?: string; archived: boolean; member_count: number; created_at: string;
@@ -40,3 +40,8 @@ export interface LiveSession {
 export interface LiveEntry { session: LiveSession; room_name: string; display_name: string; domain: string }
 export interface LiveAttendanceRow { user_id: number; name: string; joined_at: string | null; left_at: string | null }
 export interface LiveAttendance { session: LiveSession; students: LiveAttendanceRow[] }
+export interface AdminUser { id: number; role: Role; name: string; email: string; is_active: boolean; created_at: string }
+export interface AdminUsersPage { users: AdminUser[]; total: number; page: number; page_size: number }
+export interface TeacherInput { name: string; email: string; password: string }
+export interface CalendarItem { assignment: Assignment; status: TodoRow['status'] | null; submission: PublicSubmission | null }
+export interface CalendarMonth { month: string; timezone: 'Asia/Bangkok'; items: CalendarItem[] }

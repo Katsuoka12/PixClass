@@ -1,4 +1,4 @@
-# Student Tag REST API — M5
+# Student Tag REST API — M6
 
 Base path `/api` JSON UTF-8. Success returns `{ "data": ... }` except logout 204. Error always `{ "error": { "code": "CODE", "message": "ข้อความภาษาไทย" } }`. Never returns passwords, hashes, JWT, stack traces or raw database errors.
 
@@ -8,7 +8,7 @@ Base path `/api` JSON UTF-8. Success returns `{ "data": ... }` except logout 204
 - Every authenticated request checks the current user, active flag and role in MariaDB. Missing/expired/invalid cookie or inactive/deleted account → 401.
 - Every browser mutation must send `Origin: <WEB_URL>` and must not send `Sec-Fetch-Site: cross-site`; otherwise 403 CSRF_REJECTED, including login/register/logout. Origin-less CLI clients must add this header explicitly. Telegram webhook is the sole exception: it authenticates its own secret header, as documented below.
 - CORS allows only WEB_URL and credentials. Browser uses same-origin Nuxt `/api` proxy with credentials included; SSR forwards cookies directly to Express.
-- JSON maximum 16 KB. M3 submission PUT also accepts multipart as documented below. All documented object inputs are strict (unexpected fields rejected); no query parameters supported.
+- JSON maximum 16 KB. Submission PUT also accepts multipart. Object inputs are strict; query parameters are allowed only where documented (live token, admin page and calendar month).
 - Authenticated UI route guards supplement API authorization. They do not authorize access themselves.
 
 ## Types
@@ -17,7 +17,7 @@ Base path `/api` JSON UTF-8. Success returns `{ "data": ... }` except logout 204
 type Role = 'admin' | 'teacher' | 'student';
 interface User { id: number; role: Role; name: string; email: string }
 interface AuthData { user: User }
-interface OverviewData { user: User; milestone: 'M5' }
+interface OverviewData { user: User; milestone: 'M6' }
 ```
 
 Email is trimmed, lowercased, validated and at most 254 characters. Name is trimmed, 1–100 characters. Password is not trimmed, must have at least 8 characters and at most **72 UTF-8 bytes** (bcrypt input boundary). Login and register enforce the same password boundary.
@@ -259,9 +259,39 @@ Jitsi external_api.js is loaded client-side only after user entry, from HTTPS co
 
 Additional domain errors: LIVE_NOT_FOUND404, INVALID_LIVE_TOKEN400 (missing/expired/other-account token), LIVE_ALREADY_ACTIVE409, LIVE_ENDED409, LIVE_NOT_ENDED409. Existing CLASS_NOT_FOUND404, CLASS_ARCHIVED409, FORBIDDEN403, UNAUTHENTICATED401, VALIDATION_ERROR400, CSRF_REJECTED403, RATE_LIMITED429 apply.
 
-## Future milestones
+## M6 Admin and calendar
 
-Admin user management and scheduled reminders (M6) are not implemented routes. Schema includes their tables as required by M1. Extend this contract when implementing each milestone, then update independently maintained frontend types.
+```ts
+interface AdminUser { id:number; role:Role; name:string; email:string; is_active:boolean; created_at:string }
+interface AdminUsersPage { users:AdminUser[]; total:number; page:number; page_size:number }
+interface CalendarItem { assignment:Assignment; status:TodoRow['status']|null; submission:PublicSubmission|null }
+interface CalendarMonth { month:string; timezone:'Asia/Bangkok'; items:CalendarItem[] }
+```
+
+| Method | Path | Permission | Request | Success |
+|---|---|---|---|---|
+| GET | `/admin/users?page=1` | Active admin | page integer1..1000000, default1 | 200 `{data:AdminUsersPage}`, page_size50/newest IDs first |
+| POST | `/admin/users` | Active admin + CSRF | `{name,email,password}` | 201 `{data:{user:AdminUser}}` always teacher |
+| PATCH | `/admin/users/:id` | Active admin + CSRF | `{is_active:boolean}` | 200 `{data:{user:AdminUser}}` |
+| GET | `/me/calendar?month=YYYY-MM` | Current active teacher/student | Required month, years2000..2100 | 200 `{data:CalendarMonth}` |
+
+Admin endpoints recheck current DB role/activity in their transaction; cached role/JWT never grants admin access. Create validates trimmed name1..100, normalized email<=254, untrimmed password>=8characters and<=72UTF8bytes, bcrypt cost12. Create rate10/15min peradmin. No role or hash input; no role/name/password mutation route. Admin responses never include hash/chat ID/token. Duplicate409 EMAIL_EXISTS, unknown404 USER_NOT_FOUND. Every admin target (including self) is protected409 ADMIN_PROTECTED for both active/inactive changes; MVP has only seeded administrator provisioning. Teacher/student suspension takes effect on subsequent authenticated requests, including already-issued cookies and bot access. Reactivation allows login again; still-valid old JWTs may work again, since no session-version revocation scheme is added.
+
+Calendar returns due assignments from active owned classes for teachers or current enrolled classes for students, within the Bangkok calendar month using UTC SQL bounds. Teacher item status/submission are null; student sees only own submission, including grade0; disk paths stripped using existing PublicSubmission serializer. Sorted due_at then ID. Undated tasks excluded; student /me/todo remains the complete active-class list including undated tasks. Admin cannot use calendar. Wrong/missing month or extra query400 VALIDATION_ERROR; forbidden403; inactive401. No external calendar integration/export.
+
+## M6 scheduled due reminders
+
+No public run-cron endpoint. API process runs node-cron4.6.0 every minute (`* * * * *`, Asia/Bangkok, noOverlap), once on startup, only when Telegram credentials are configured. Disabled integration does not scan/reserve reminders. Shutdown stops scheduling and waits for the active run before closing the pool, subject to the existing10s process shutdown deadline.
+
+- `due_24h`: due>now+3h and<=now+24h; `due_3h`: due>now and<=now+3h. Catch-up windows avoid missed exact-minute triggers; startup with2h left sends only3h threshold. No expired/undated/archived/inactive/nonstudent/nonmember/submitted recipient. Submission existence excludes even ungraded/late work.
+- A dedicated MariaDB connection holds a database-scoped GET_LOCK throughout a run. A busy lock skips the run; connection/lock loss prevents further delivery and destroys the uncertain connection. Same-process runtime also prevents overlap.
+- Before network send, claim a durable notification_log row (`skipped`, `DUE_RESERVED`) only if no existing row for(user_id,assignment_id,kind) exists. Shared notify updates that same row to its final sent/failed/skipped result; no duplicate result row. Active/member/missing/due date/window/mute/chat are rechecked after send-queue wait. Existing M4 throttling and safe errors apply.
+- **At most one attempt per assignment and threshold**, including failed/muted/unlinked/skipped attempts; due edits do not reset the threshold. A later3h threshold remains distinct from24h. This explicitly prioritizes duplicate prevention over automatic recovery: crash after claim, an ambiguous send or failed log update may leave DUE_RESERVED and lose that reminder; it is never automatically resent. Manual teacher reminder stays independent. Do not delete due_* logs during an active assignment if dedup history must remain.
+- No schema migration, persistent retry queue or external scheduler service. node-cron API/options checked against installed4.6.0 declarations and official docs. A job error uses a fixed safe log message and does not terminate classroom operations.
+
+## Completed milestone scope
+
+M1–M6 implementation is present. Real Telegram delivery and two-device Jitsi media/moderator authentication still require credentials/hardware verification. Out-of-scope AGENTS features (quiz, recording, payments, parent accounts, CSV import, Docker/CI) remain absent.
 
 ## References checked for installed major versions
 

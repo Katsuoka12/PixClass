@@ -15,8 +15,12 @@ import type { TelegramIntegration } from './telegram.js';
 import { telegramRouter } from './routes/telegram.js';
 import type { LiveIntegration } from './live.js';
 import { liveRouter } from './routes/live.js';
+import type { AdminStore } from './admin.js';
+import type { CalendarStore } from './calendar.js';
+import { adminRouter } from './routes/admin.js';
+import { calendarRouter } from './routes/calendar.js';
 
-export function createApp(config: AppConfig, users: UserStore, classes?: ClassStore, assignments?: AssignmentStore, uploadRoot?: string, telegram?: TelegramIntegration, live?: LiveIntegration) {
+export function createApp(config: AppConfig, users: UserStore, classes?: ClassStore, assignments?: AssignmentStore, uploadRoot?: string, telegram?: TelegramIntegration, live?: LiveIntegration, management?: { admin: AdminStore; calendar: CalendarStore }) {
   const app = express();
   app.disable('x-powered-by');
   // Only the local Nuxt/reverse proxy may supply client forwarding headers.
@@ -39,11 +43,15 @@ export function createApp(config: AppConfig, users: UserStore, classes?: ClassSt
   if (assignments) app.use('/api', assignmentsRouter(config, users, assignments, uploadRoot, telegram?.hooks));
   if (telegram) app.use('/api', telegramRouter(config, users, telegram));
   if (live) app.use('/api', liveRouter(config, users, live));
+  if (management) {
+    app.use('/api', adminRouter(config, users, management.admin));
+    app.use('/api', calendarRouter(config, users, management.calendar));
+  }
   // Role-specific landing data, separate from classroom authorization.
   for (const role of ['admin', 'teacher', 'student'] as const) {
     app.get(`/api/${role}/overview`, authenticate(config, users), requireRole(role), (req, res) => {
       z.strictObject({}).parse(req.query);
-      res.json({ data: { user: publicUser(res.locals.user), milestone: 'M5' } });
+      res.json({ data: { user: publicUser(res.locals.user), milestone: 'M6' } });
     });
   }
   app.use((_req, _res, next) => next(new ApiError(404, 'NOT_FOUND', 'ไม่พบข้อมูลที่ต้องการ')));

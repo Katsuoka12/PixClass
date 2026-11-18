@@ -1,4 +1,4 @@
-# Student Tag API — M5
+# Student Tag API — M6
 
 Express 5 + strict TypeScript + zod 4 + mysql2/promise SQL ตรง ใช้ Node 24 LTS >=24.15.0 ติดตั้งและรันจากโฟลเดอร์นี้:
 
@@ -53,9 +53,15 @@ Webhook POST `/api/telegram/webhook` ตรวจ secret ด้วย timingSafe
 
 แจ้งงาน/ประกาศ/คะแนนหลัง DB commit ไม่ทำให้ข้อมูลหลักย้อนกลับเมื่อส่งไม่ได้ มีคิวใน process เดียว หน่วง 50ms ทุกข้อความ/1s ต่อ chat และเคารพ retry_after จาก 429 แต่ไม่ retry ข้อความล้มเหลวอัตโนมัติ ตรวจ active/member/mute/คนยังไม่ส่งอีกครั้งหลังรอคิว บันทึก notification_log sent/failed/skipped ด้วย fixed error codes และไม่มี raw Telegram errors ซึ่งอาจมี credential ไม่มี persistent outbox: process crash อาจทำข้อความหายและกรณีส่งสำเร็จแต่ DB log ล้มอาจไม่มี log ผู้ดูแลควรตรวจ log/error และพื้นที่ DB ก่อนใช้งานจริง หลาย API instance ต้องเพิ่ม shared rate limiter ก่อนขยายระบบ
 
-M4 ยังไม่ได้ตรวจ real Telegram delivery เนื่องจากไม่มี credentials ใน environment นี้ ยังไม่มี cron เช็กรายละเอียด production และ proxy ใน README ราก
+ยังไม่ได้ตรวจ real Telegram delivery เนื่องจากไม่มี credentials ใน environment นี้ เช็กรายละเอียด production และ proxy ใน README ราก
 
 M5 เพิ่ม `live.ts`, `live-db.ts`, `routes/live.ts`, `services/live-notify.ts` ใช้ schema เดิมและ JITSI_DOMAIN ไม่ส่ง room_name จนกว่า token/current-account/current-class ผ่านการตรวจ ทุก write lock class ก่อน session/token/attendance มี SQL tests สำหรับ concurrent start/join/end และ expiry/removal หลังรอล็อก GET join ต้อง X-Live-Join:1 เพื่อกัน navigation/prefetch บันทึกเช็คชื่อโดยไม่ตั้งใจ; POST leave/beacon ยังตรวจ cookie+Origin
+
+M6 เพิ่ม `admin-db.ts`, `calendar-db.ts`, `reminder-db.ts`, routes/admin+calendar และ jobs/reminders+runtime ใช้ node-cron4.6.0 ไม่ต้อง migrate schema Adminสร้างเฉพาะครู bcrypt12 ระงับ/เปิดบัญชีได้ยกเว้นทุกบัญชีadmin และ recheck role/active ใน DB ปฏิทิน SQL monthboundsUTCตามเวลาไทย ไม่มี N+1 และไม่คืน submission ของคนอื่น
+
+Scheduler เปิดเฉพาะเมื่อ Telegramพร้อม ตรวจตอนstartupและทุกนาที ผ่าน advisory lock แบบ dedicatedconnection และ durable reservation ใน notification_log ก่อนส่ง อัปเดตผลที่แถวเดิมผ่านบริการnotify ตรวจสิทธิ์/ส่งงาน/กำหนดส่งอีกครั้งหลังรอคิว กันซ้ำหนึ่งattempt/คน/งาน/24hหรือ3hทุกstatus ไม่retryfailed/skippedหรือDUE_RESERVED อัตโนมัติและdue editไม่reset จึงป้องกันduplicateหลังlogfailureแต่เสี่ยงข้อความหายเมื่อcrashหลังจอง เก็บ log due_* ไว้และอ่านข้อจำกัด READMEราก ก่อนเปิดproduction
+
+`npm run test:db` รวม M6 admin/calendar/reminder/HTTP-flow ด้วย Tests สร้างและลบfixturesของตนบน student_tag_m1_test เท่านั้น ทดสอบcronผ่านfake transport ไม่มีrealTelegram เตือน dev dependency audit5high ใน Vitest/Vite/picomatch chain ตามรายงาน M6; node-cronไม่มีtransitive dependency ไม่ใช้force downgrade
 
 Live token random32bytes อายุ2h ใช้ซ้ำเฉพาะบัญชี/คาบเดิมจนหมดอายุ จบคาบแล้วปฏิเสธทั้งหมด ไม่ log token/query/ปุ่มคำเชิญใน notification_log โหลด room เฉพาะ API join ที่ผ่านสิทธิ์ เช็คชื่อเก็บ earliest joined_at/last left_at ต่อuser/session End ปิดแถวที่ยังไม่ออก ครูเช็คชื่อ/เตือนเฉพาะห้องตนเอง คิว Telegram M4 ตรวจ live eligibility อีกครั้งหลังรอ ส่งล้มเหลวไม่ทำให้เริ่มคาบย้อนกลับ
 

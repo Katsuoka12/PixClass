@@ -1,15 +1,16 @@
 import type { AssignmentStore } from '../assignments.js';
 import type { ClassStore } from '../classrooms.js';
 import { ApiError } from '../middleware/errors.js';
-import type { NotificationHooks, ReminderResult, TelegramButton, TelegramStore } from '../telegram.js';
+import type { NotificationHooks, NotificationRecord, ReminderResult, TelegramButton, TelegramStore } from '../telegram.js';
 
 export type TelegramSend = (chatId: number, text: string, buttons?: TelegramButton[], beforeSend?: () => Promise<void>) => Promise<void>;
 type Outcome = 'sent' | 'unlinked' | 'muted' | 'failed' | 'skipped';
-interface Meta { kind: string; refId: number | null; classId?: number; missingAssignmentId?: number; eligible?: () => Promise<boolean> }
+export interface NotificationMeta { kind: string; refId: number | null; classId?: number; missingAssignmentId?: number; eligible?: () => Promise<boolean>; writeLog?: (record: NotificationRecord) => Promise<void> }
+export type Notify = (userId: number, text: string, buttons?: TelegramButton[], meta?: NotificationMeta) => Promise<Outcome>;
 class SkippedDelivery extends Error { constructor(public outcome: Outcome) { super(outcome); } }
 
 export function createNotifications(store: TelegramStore, assignments: AssignmentStore, classes: ClassStore, send: TelegramSend | null, webUrl: string) {
-  async function notify(userId: number, text: string, buttons?: TelegramButton[], meta: Meta = { kind: 'message', refId: null }): Promise<Outcome> {
+  async function notify(userId: number, text: string, buttons?: TelegramButton[], meta: NotificationMeta = { kind: 'message', refId: null }): Promise<Outcome> {
     text = text.slice(0, 3999);
     let outcome: Outcome = 'failed';
     let error: string | null = null;
@@ -32,12 +33,12 @@ export function createNotifications(store: TelegramStore, assignments: Assignmen
       else error = 'TELEGRAM_SEND_FAILED';
     }
     try {
-      await store.log({ userId, text, kind: meta.kind, refId: meta.refId, status: outcome === 'sent' ? 'sent' : outcome === 'failed' ? 'failed' : 'skipped', error: error ?? (outcome === 'sent' ? null : outcome.toUpperCase()) });
+      await (meta.writeLog ?? store.log)({ userId, text, kind: meta.kind, refId: meta.refId, status: outcome === 'sent' ? 'sent' : outcome === 'failed' ? 'failed' : 'skipped', error: error ?? (outcome === 'sent' ? null : outcome.toUpperCase()) });
     } catch { console.error('Notification log write failed'); }
     return outcome;
   }
   const taskButton = (id: number) => [{ text: 'เปิดงานบนเว็บ', url: `${webUrl}/assignments/${id}` }];
-  async function batch(ids: number[], text: string, buttons: TelegramButton[], meta: Meta): Promise<ReminderResult> {
+  async function batch(ids: number[], text: string, buttons: TelegramButton[], meta: NotificationMeta): Promise<ReminderResult> {
     const result: ReminderResult = { total: ids.length, sent: 0, unlinked: 0, muted: 0, failed: 0, skipped: 0 };
     for (const userId of ids) result[await notify(userId, text, buttons, meta)]++;
     return result;
